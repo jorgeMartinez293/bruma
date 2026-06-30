@@ -1,0 +1,4 @@
+.build/
+ArchIpelago.app/
+*.o
+*.d
