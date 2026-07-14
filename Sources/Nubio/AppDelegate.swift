@@ -16,7 +16,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         let bridge = NativeBridge(store: store, positions: positions)
 
         guard let runtimeRoot = Bundle.module.url(forResource: "runtime", withExtension: nil) else {
-            NSLog("ArchIpelago: runtime bundle missing"); NSApp.terminate(nil); return
+            NSLog("Nubio: runtime bundle missing"); NSApp.terminate(nil); return
         }
         let schemeHandler = WidgetSchemeHandler(runtimeRoot: runtimeRoot, store: store)
 
@@ -51,7 +51,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         guard fm.fileExists(atPath: src.path) else { return }
         let dst = Paths.widgetsDir.appendingPathComponent("ghostkwebb-cool-clock")
         try? fm.copyItem(at: src, to: dst)
-        NSLog("ArchIpelago: seeded test widget from Übersicht")
+        NSLog("Nubio: seeded test widget from Übersicht")
     }
 
     // MARK: Menu bar
@@ -60,7 +60,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
         if let button = statusItem.button {
             button.image = NSImage(systemSymbolName: "square.on.square.dashed",
-                                   accessibilityDescription: "ArchIpelago")
+                                   accessibilityDescription: "Nubio")
             button.image?.isTemplate = true
         }
         rebuildMenu()
@@ -89,7 +89,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
 
         menu.addItem(.separator())
-        menu.addItem(withTitle: "Salir de ArchIpelago", action: #selector(quit), keyEquivalent: "q").target = self
+        menu.addItem(withTitle: "Salir de Nubio", action: #selector(quit), keyEquivalent: "q").target = self
         statusItem.menu = menu
     }
 

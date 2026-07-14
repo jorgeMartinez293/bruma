@@ -3,7 +3,7 @@ import Foundation
 /// Runs a widget `command` exactly like Übersicht does: spawn a login `bash`
 /// with the widget folder as cwd and pipe the command in via stdin.
 final class ShellRunner {
-    private let queue = DispatchQueue(label: "archipelago.shell", attributes: .concurrent)
+    private let queue = DispatchQueue(label: "nubio.shell", attributes: .concurrent)
 
     func run(command: String, cwd: URL, completion: @escaping (String, String) -> Void) {
         queue.async {

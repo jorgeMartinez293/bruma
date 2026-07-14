@@ -1,4 +1,4 @@
 .build/
-ArchIpelago.app/
+Nubio.app/
 *.o
 *.d

@@ -1,0 +1,11 @@
+[package]
+name = "globe-widget-renderer"
+version = "0.1.0"
+edition = "2021"
+
+[[bin]]
+name = "globe-frame"
+path = "src/main.rs"
+
+[dependencies]
+globe = "0.2"

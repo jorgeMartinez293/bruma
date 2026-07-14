@@ -1,7 +1,7 @@
 import AppKit
 
 @main
-struct ArchIpelagoMain {
+struct NubioMain {
     static func main() {
         let app = NSApplication.shared
         // Agent app: no Dock icon, no app menu — lives in the menu bar only.

@@ -1,33 +1,33 @@
 #!/bin/bash
-# Builds ArchIpelago.app — a standalone, double-clickable agent app.
+# Builds Nubio.app — a standalone, double-clickable agent app.
 set -e
 cd "$(dirname "$0")"
 
 swift build -c release
 
-APP="ArchIpelago.app"
+APP="Nubio.app"
 BIN_DIR="$APP/Contents/MacOS"
 RES_DIR="$APP/Contents/Resources"
 rm -rf "$APP"
 mkdir -p "$BIN_DIR" "$RES_DIR"
 
-cp ".build/release/ArchIpelago" "$BIN_DIR/ArchIpelago"
+cp ".build/release/Nubio" "$BIN_DIR/Nubio"
 # Bundle.module finds the resource bundle next to the executable.
-cp -R ".build/release/ArchIpelago_ArchIpelago.bundle" "$BIN_DIR/"
+cp -R ".build/release/Nubio_Nubio.bundle" "$BIN_DIR/"
 
 cat > "$APP/Contents/Info.plist" <<'PLIST'
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
-  <key>CFBundleExecutable</key><string>ArchIpelago</string>
-  <key>CFBundleIdentifier</key><string>com.jorge.archipelago</string>
-  <key>CFBundleName</key><string>ArchIpelago</string>
+  <key>CFBundleExecutable</key><string>Nubio</string>
+  <key>CFBundleIdentifier</key><string>com.jorge.nubio</string>
+  <key>CFBundleName</key><string>Nubio</string>
   <key>CFBundlePackageType</key><string>APPL</string>
   <key>CFBundleShortVersionString</key><string>1.0</string>
   <key>LSMinimumSystemVersion</key><string>13.0</string>
   <key>LSUIElement</key><true/>
-  <key>NSHumanReadableCopyright</key><string>ArchIpelago</string>
+  <key>NSHumanReadableCopyright</key><string>Nubio</string>
 </dict>
 </plist>
 PLIST

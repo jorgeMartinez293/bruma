@@ -1,4 +1,4 @@
-/* ArchIpelago widget runtime — loads Übersicht-style widgets in WKWebView.
+/* Nubio widget runtime — loads Übersicht-style widgets in WKWebView.
  *
  * Per widget:
  *   1. Babel-transform the JSX/ESM source, eval it as a CommonJS module.
@@ -47,7 +47,7 @@
     if (name === "react") return Object.assign({ default: window.React }, window.React);
     if (name === "react-dom") return Object.assign({ default: window.ReactDOM }, window.ReactDOM);
     if (name === "uebersicht" || name === "Uebersicht") return uebersichtModule;
-    throw new Error("ArchIpelago: cannot require '" + name + "'");
+    throw new Error("Nubio: cannot require '" + name + "'");
   }
 
   // ---- widget module evaluation --------------------------------------------

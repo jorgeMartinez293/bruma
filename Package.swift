@@ -2,11 +2,11 @@
 import PackageDescription
 
 let package = Package(
-    name: "ArchIpelago",
+    name: "Nubio",
     platforms: [.macOS(.v13)],
     targets: [
         .executableTarget(
-            name: "ArchIpelago",
+            name: "Nubio",
             resources: [
                 .copy("Resources/runtime")
             ],

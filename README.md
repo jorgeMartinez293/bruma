@@ -1,4 +1,4 @@
-# ArchIpelago
+# Nubio
 
 Motor de **widgets de escritorio** para macOS, estilo [Übersicht]. Nativo (Swift +
 WKWebView), ligero, con **fondo transparente real**: los widgets se dibujan directamente
@@ -10,7 +10,7 @@ corren sin cambios.
 ## Por qué nativo (y no Electron)
 
 Los widgets corren en un webview (WebKit). Electron empaqueta Chromium → mucha RAM y binario
-grande; ArchIpelago usa **WKWebView** = el WebKit del sistema → RAM baja, binario diminuto, y
+grande; Nubio usa **WKWebView** = el WebKit del sistema → RAM baja, binario diminuto, y
 **la misma capacidad de widgets** (cualquier HTML/CSS/JS/JSX). El propio Übersicht es nativo.
 
 ## Construir y ejecutar
@@ -21,12 +21,12 @@ swift run
 
 # App independiente, doble-clic, sin icono en el Dock:
 ./make_app.sh
-open ArchIpelago.app
+open Nubio.app
 ```
 
-`ArchIpelago.app` es una *agent app* (`LSUIElement`): no aparece en el Dock, solo un icono en
+`Nubio.app` es una *agent app* (`LSUIElement`): no aparece en el Dock, solo un icono en
 la barra de menú. Para que arranque al iniciar sesión: Ajustes del Sistema → General →
-Ítems de inicio → añadir `ArchIpelago.app`.
+Ítems de inicio → añadir `Nubio.app`.
 
 > **Permisos:** en el primer arranque macOS puede pedir acceso a carpetas (porque el `command`
 > del widget corre en una shell de login `bash -l`). Acéptalo si tus widgets leen archivos.
@@ -44,7 +44,7 @@ la barra de menú. Para que arranque al iniciar sesión: Ajustes del Sistema →
 Los widgets viven en:
 
 ```
-~/Library/Application Support/ArchIpelago/widgets/
+~/Library/Application Support/Nubio/widgets/
 ```
 
 Layouts soportados (igual que Übersicht):
@@ -90,12 +90,12 @@ esquema interno `archw://`. Ej.: `@font-face { src: url('MiFuente.otf'); }`.
 
 ## Arquitectura
 
-- `Sources/ArchIpelago/` — capa nativa: ventana de escritorio transparente
+- `Sources/Nubio/` — capa nativa: ventana de escritorio transparente
   (`DesktopWindow`), host del webview (`WebHost`), ejecución de shell (`ShellRunner`),
   esquema de assets (`WidgetSchemeHandler`), watcher (`WidgetWatcher`), posiciones
   (`PositionStore`), menú/ciclo de vida (`AppDelegate`), una ventana por pantalla
   (`WindowManager`).
-- `Sources/ArchIpelago/Resources/runtime/` — runtime web: `index.html` + `runtime.js`
+- `Sources/Nubio/Resources/runtime/` — runtime web: `index.html` + `runtime.js`
   (transforma JSX con Babel, ejecuta el comando vía puente nativo, renderiza con React,
   inyecta el CSS y gestiona el arrastre). React/ReactDOM/Babel vendorizados en `vendor/`.
 

@@ -2,11 +2,11 @@ import Foundation
 
 /// Central location for the app's on-disk paths.
 enum Paths {
-    /// ~/Library/Application Support/ArchIpelago
+    /// ~/Library/Application Support/Nubio
     static let supportDir: URL = {
         let base = FileManager.default.urls(for: .applicationSupportDirectory,
                                             in: .userDomainMask)[0]
-        return base.appendingPathComponent("ArchIpelago", isDirectory: true)
+        return base.appendingPathComponent("Nubio", isDirectory: true)
     }()
 
     /// Folder watched for widgets. Drop `<name>/<name>.jsx` widgets here.
