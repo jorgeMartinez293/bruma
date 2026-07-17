@@ -56,7 +56,8 @@ git push origin "v$VERSION"
 
 # ── 3. GitHub Release on the release repo ──────────────────────────────────────
 say "Publishing GitHub Release v$VERSION on $RELEASE_REPO"
-ASSETS=("$ZIP" "$DMG" "${DELTAS[@]}")
+# macOS bash 3.2 + set -u: expanding an empty array errors; guard the deltas.
+ASSETS=("$ZIP" "$DMG" ${DELTAS[@]+"${DELTAS[@]}"})
 if gh release view "v$VERSION" -R "$RELEASE_REPO" >/dev/null 2>&1; then
   gh release upload "v$VERSION" "${ASSETS[@]}" -R "$RELEASE_REPO" --clobber
 else
@@ -75,8 +76,10 @@ git config user.name  "$(cd "$APP_DIR" && git config user.name)"
 for BR in gh-pages main; do
   git checkout -q "$BR"
   cp "$DIST/appcast.xml" appcast.xml
-  if ! git diff --quiet; then
-    git add appcast.xml
+  # `git diff --quiet` misses a brand-new (untracked) appcast.xml — stage first
+  # and compare the index, so the very first publication also gets pushed.
+  git add appcast.xml
+  if ! git diff --cached --quiet; then
     git commit -q -m "Publish v$VERSION appcast (build $BUILD)"
     git push -q origin "$BR"
     echo "  pushed appcast → $BR"

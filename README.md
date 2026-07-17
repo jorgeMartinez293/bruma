@@ -19,8 +19,8 @@ grande; bruma usa **WKWebView** = el WebKit del sistema → RAM baja, binario di
 # Desarrollo (vive mientras dure la terminal):
 swift run
 
-# App independiente, doble-clic, sin icono en el Dock:
-./make_app.sh
+# App independiente, universal, firmada:
+make
 open bruma.app
 ```
 
