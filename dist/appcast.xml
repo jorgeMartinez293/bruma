@@ -1,0 +1,14 @@
+<?xml version="1.0" standalone="yes"?>
+<rss xmlns:sparkle="http://www.andymatuschak.org/xml-namespaces/sparkle" version="2.0">
+    <channel>
+        <title>bruma</title>
+        <item>
+            <title>1.0</title>
+            <pubDate>Sat, 18 Jul 2026 01:29:06 +0200</pubDate>
+            <sparkle:version>2</sparkle:version>
+            <sparkle:shortVersionString>1.0</sparkle:shortVersionString>
+            <sparkle:minimumSystemVersion>13.0</sparkle:minimumSystemVersion>
+            <enclosure url="https://github.com/jorgeMartinez293/bruma-releases/releases/latest/download/bruma-1.0.zip" length="2234824" type="application/octet-stream" sparkle:edSignature="Ckd/cIUKaINXEPezwYyi6CzDlduOoPz8/WJOUhSovXz26veSuw13RJYFjNZNAiy7Gmh25mtbBq1te+pexDtoDA=="/>
+        </item>
+    </channel>
+</rss>
