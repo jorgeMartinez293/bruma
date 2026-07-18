@@ -82,6 +82,14 @@ export const render = ({ output }) => (
 **Sin fondo:** no pongas `background` en `className`. El contenedor es transparente por defecto,
 así que solo se ve lo que dibujes (texto, SVG, imágenes con transparencia…).
 
+**Fondo Liquid Glass (extensión bruma):** `export const glass = true` pide a la capa nativa
+un panel de cristal real detrás del widget (`NSGlassEffectView` en macOS 26+,
+`NSVisualEffectView` antes), con el mismo marco y `border-radius` que declare el `className`
+(o `export const glass = 18` para forzar el radio). Es material del sistema de verdad: difumina
+el wallpaper y cambia solo con el modo claro/oscuro — un `backdrop-filter` en CSS no puede,
+porque el webview es transparente y no hay nada web detrás que difuminar. Para que el
+*contenido* siga el tema, usa `@media (prefers-color-scheme: dark)` en el `className`.
+
 **Assets relativos** (fuentes, imágenes) se resuelven contra la carpeta del widget vía el
 esquema interno `archw://`. Ej.: `@font-face { src: url('MiFuente.otf'); }`.
 

@@ -68,7 +68,10 @@
       command: pick(exp.command, def.command),
       refreshFrequency: pick(exp.refreshFrequency, def.refreshFrequency),
       className: pick(exp.className, def.className),
-      render: pick(exp.render, def.render)
+      render: pick(exp.render, def.render),
+      // Bruma extension: `export const glass = true` (or a number to override
+      // the corner radius) asks the native side for a Liquid Glass backdrop.
+      glass: pick(exp.glass, def.glass)
     };
   }
   function pick(a, b) { return a !== undefined ? a : b; }
@@ -116,6 +119,34 @@
     style.textContent = parts.globals + "\n" + sel + " {\n" + parts.rest + "\n}\n";
     return style;
   }
+
+  // ---- native glass backdrops ----------------------------------------------
+  // Report the frame of every glass-enabled widget so AppKit can place a real
+  // material view (Liquid Glass) behind the transparent webview. CSS
+  // backdrop-filter cannot blur the wallpaper — only native views can.
+
+  var backdropRAF = null;
+
+  function syncBackdrops() {
+    if (backdropRAF) return;
+    backdropRAF = requestAnimationFrame(function () {
+      backdropRAF = null;
+      var frames = [];
+      instances.forEach(function (inst) {
+        if (!inst.glass) return;
+        var rect = inst.wrap.getBoundingClientRect();
+        if (!rect.width || !rect.height) return;
+        var radius = typeof inst.glass === "number"
+          ? inst.glass
+          : parseFloat(getComputedStyle(inst.wrap).borderTopLeftRadius) || 0;
+        frames.push({ id: inst.id, x: rect.left, y: rect.top,
+                      w: rect.width, h: rect.height, r: radius });
+      });
+      notify("backdrops", { frames: frames });
+    });
+  }
+
+  var backdropObserver = new ResizeObserver(syncBackdrops);
 
   // ---- mount one widget -----------------------------------------------------
 
@@ -171,7 +202,9 @@
       interval = setInterval(tick, ms);
     }
 
-    instances.push({ interval: interval, reactRoot: reactRoot, styleEl: styleEl, wrap: wrap });
+    instances.push({ id: item.id, glass: widget.glass, interval: interval,
+                     reactRoot: reactRoot, styleEl: styleEl, wrap: wrap });
+    if (widget.glass) backdropObserver.observe(wrap);
   }
 
   // ---- lifecycle ------------------------------------------------------------
@@ -184,6 +217,8 @@
       if (inst.wrap && inst.wrap.parentNode) inst.wrap.parentNode.removeChild(inst.wrap);
     });
     instances = [];
+    backdropObserver.disconnect();
+    syncBackdrops();
   }
 
   function start() {
@@ -191,6 +226,7 @@
       var positions = res[0] || {};
       var widgets = res[1] || [];
       widgets.forEach(function (item) { mountWidget(item, positions); });
+      syncBackdrops();
       log("loaded " + widgets.length + " widget(s)");
     }).catch(function (e) { log("start failed:", String(e)); });
   }

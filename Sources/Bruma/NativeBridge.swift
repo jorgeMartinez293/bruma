@@ -9,11 +9,17 @@ import WebKit
 ///
 /// Notify channel "archNotify"  — fire-and-forget:
 ///     { action: "savePosition", id, x, y }
+///     { action: "backdrops", frames: [{ id, x, y, w, h, r }] }
 ///     { action: "log", message }
+protocol BackdropDelegate: AnyObject {
+    func updateBackdrops(for webView: WKWebView?, frames: [BackdropFrame])
+}
+
 final class NativeBridge: NSObject, WKScriptMessageHandler, WKScriptMessageHandlerWithReply {
     private let store: WidgetStore
     private let positions: PositionStore
     private let shell = ShellRunner()
+    weak var backdropDelegate: BackdropDelegate?
 
     init(store: WidgetStore, positions: PositionStore) {
         self.store = store
@@ -65,6 +71,19 @@ final class NativeBridge: NSObject, WKScriptMessageHandler, WKScriptMessageHandl
                let y = (body["y"] as? NSNumber)?.doubleValue {
                 positions.set(id: id, x: x, y: y)
             }
+        case "backdrops":
+            let frames = ((body["frames"] as? [[String: Any]]) ?? []).compactMap { f -> BackdropFrame? in
+                guard let id = f["id"] as? String,
+                      let x = (f["x"] as? NSNumber)?.doubleValue,
+                      let y = (f["y"] as? NSNumber)?.doubleValue,
+                      let w = (f["w"] as? NSNumber)?.doubleValue,
+                      let h = (f["h"] as? NSNumber)?.doubleValue else { return nil }
+                let r = (f["r"] as? NSNumber)?.doubleValue ?? 0
+                return BackdropFrame(id: id, rect: NSRect(x: x, y: y, width: w, height: h),
+                                     cornerRadius: r)
+            }
+            backdropDelegate?.updateBackdrops(for: message.webView, frames: frames)
+
         case "log":
             if let msg = body["message"] { NSLog("[widget] \(msg)") }
         default:

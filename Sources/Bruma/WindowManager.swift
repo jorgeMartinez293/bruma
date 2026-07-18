@@ -1,17 +1,20 @@
 import AppKit
+import WebKit
 
 /// Owns one desktop window + web host per screen, and rebuilds them when the
 /// screen arrangement changes. Fans out edit-mode and reload commands.
-final class WindowManager {
+final class WindowManager: BackdropDelegate {
     private let bridge: NativeBridge
     private let schemeHandler: WidgetSchemeHandler
     private var windows: [DesktopWindow] = []
     private var hosts: [WebHost] = []
+    private var backdrops: [BackdropContainer] = []
 
     init(bridge: NativeBridge, schemeHandler: WidgetSchemeHandler) {
         self.bridge = bridge
         self.schemeHandler = schemeHandler
         rebuild()
+        bridge.backdropDelegate = self
         NotificationCenter.default.addObserver(
             self, selector: #selector(rebuild),
             name: NSApplication.didChangeScreenParametersNotification, object: nil)
@@ -21,16 +24,37 @@ final class WindowManager {
         for w in windows { w.orderOut(nil); w.close() }
         windows.removeAll()
         hosts.removeAll()
+        backdrops.removeAll()
 
         for screen in NSScreen.screens {
             let window = DesktopWindow(screen: screen)
             let host = WebHost(frame: window.contentLayoutRect, bridge: bridge,
                                schemeHandler: schemeHandler)
-            window.contentView = host.webView
+
+            // Native glass sits behind the transparent webview: the web layer
+            // draws only widget content; the material comes from AppKit.
+            let content = FlippedContentView(frame: window.contentLayoutRect)
+            let backdrop = BackdropContainer(frame: content.bounds)
+            backdrop.autoresizingMask = [.width, .height]
+            host.webView.frame = content.bounds
+            content.addSubview(backdrop)
+            content.addSubview(host.webView)
+            window.contentView = content
+
             window.orderFront(nil)
             windows.append(window)
             hosts.append(host)
+            backdrops.append(backdrop)
         }
+    }
+
+    // MARK: BackdropDelegate
+
+    func updateBackdrops(for webView: WKWebView?, frames: [BackdropFrame]) {
+        guard let webView,
+              let index = hosts.firstIndex(where: { $0.webView === webView }),
+              index < backdrops.count else { return }
+        backdrops[index].update(frames: frames)
     }
 
     func reloadWidgets() {
