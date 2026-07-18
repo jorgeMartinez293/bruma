@@ -22,7 +22,7 @@ enum Paths {
     /// Persisted drag positions: { widgetId: { x, y } }.
     static let positionsFile = supportDir.appendingPathComponent("positions.json")
 
-    /// Persisted enabled/disabled widget state: { "disabled": [widgetId, …] }.
+    /// Persisted widget allowlist: { "enabled": [widgetId, …] } — unlisted = off.
     /// File-backed (not UserDefaults) so other apps — e.g. vaho's themes mode —
     /// can snapshot and restore it alongside positions.json.
     static let statesFile = supportDir.appendingPathComponent("states.json")

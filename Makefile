@@ -32,9 +32,9 @@ package:
 	cp $(BUILD_DIR)/$(EXECUTABLE) $(APP_BUNDLE)/Contents/MacOS/
 	cp $(PLIST) $(APP_BUNDLE)/Contents/Info.plist
 	cp $(ICON) $(APP_BUNDLE)/Contents/Resources/AppIcon.icns
-	# SwiftPM resource bundle (Bundle.module — the widget runtime). Bundle.module
-	# looks next to the executable when running from a .app built this way.
-	cp -R $(BUILD_DIR)/$(EXECUTABLE)_$(EXECUTABLE).bundle $(APP_BUNDLE)/Contents/MacOS/
+	# SwiftPM resource bundle (Bundle.module — the widget runtime). The generated
+	# accessor looks in Contents/Resources first (Bundle.main.resourceURL).
+	cp -R $(BUILD_DIR)/$(EXECUTABLE)_$(EXECUTABLE).bundle $(APP_BUNDLE)/Contents/Resources/
 	chmod +x $(APP_BUNDLE)/Contents/MacOS/$(EXECUTABLE)
 	# Embed Sparkle.framework (auto-update): swift build links against it but doesn't
 	# copy it into the bundle, and Sparkle can't run from outside the app.
