@@ -39,6 +39,12 @@ la barra de menú. Para que arranque al iniciar sesión: Ajustes del Sistema →
 - **Abrir carpeta de widgets**
 - **Salir**
 
+## Widgets incluidos
+
+En [`widgets/`](widgets/) hay widgets listos para usar (reloj analógico, mes, CPU),
+con instrucciones de instalación: basta copiar la carpeta del widget a
+`~/Library/Application Support/Bruma/widgets/`.
+
 ## Crear un widget
 
 Los widgets viven en:
