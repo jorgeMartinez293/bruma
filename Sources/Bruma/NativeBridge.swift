@@ -3,12 +3,15 @@ import WebKit
 /// JS <-> native bridge.
 ///
 /// Reply channel  "arch"        — async request/response:
-///     { action: "listWidgets" }                 -> [{ id, source }]
-///     { action: "getPositions" }                -> { id: { x, y } }
-///     { action: "shell", id, command }          -> { output, error }
+///     { action: "listWidgets" }                 -> [{ id, source }]   (all presets)
+///     { action: "listInstances" }               -> [{ id, widget, x?, y? }]
+///     { action: "addInstance", widget }         -> { id, widget, x, y }
+///     { action: "shell", id, command }          -> { output, error }  (id = preset id)
 ///
 /// Notify channel "archNotify"  — fire-and-forget:
-///     { action: "savePosition", id, x, y }
+///     { action: "moveInstance", id, x, y }
+///     { action: "removeInstance", id }
+///     { action: "closePicker" }
 ///     { action: "backdrops", frames: [{ id, x, y, w, h, r }] }
 ///     { action: "log", message }
 protocol BackdropDelegate: AnyObject {
@@ -17,13 +20,22 @@ protocol BackdropDelegate: AnyObject {
 
 final class NativeBridge: NSObject, WKScriptMessageHandler, WKScriptMessageHandlerWithReply {
     private let store: WidgetStore
-    private let positions: PositionStore
+    private let instances: InstanceStore
     private let shell = ShellRunner()
     weak var backdropDelegate: BackdropDelegate?
 
-    init(store: WidgetStore, positions: PositionStore) {
+    /// Fired after the instance set changes from the JS side (add/remove), so
+    /// the app can refresh every desktop webview.
+    var onInstancesChanged: (() -> Void)?
+    /// Fired when the picker page asks to be dismissed (✕ button / Escape).
+    var onClosePicker: (() -> Void)?
+    /// Lets a freshly-(re)loaded runtime page ask whether edit mode is on
+    /// (a screen rebuild can happen while the picker is open).
+    var editModeProvider: (() -> Bool)?
+
+    init(store: WidgetStore, instances: InstanceStore) {
         self.store = store
-        self.positions = positions
+        self.instances = instances
     }
 
     // MARK: Reply channel ("arch")
@@ -36,11 +48,23 @@ final class NativeBridge: NSObject, WKScriptMessageHandler, WKScriptMessageHandl
         }
         switch action {
         case "listWidgets":
-            let widgets = store.list().map { ["id": $0.id, "source": $0.source] }
+            let widgets = store.listAll().map { ["id": $0.id, "source": $0.source] }
             replyHandler(widgets, nil)
 
-        case "getPositions":
-            replyHandler(positions.asDictionary(), nil)
+        case "listInstances":
+            replyHandler(instances.asArray(), nil)
+
+        case "getEditMode":
+            replyHandler(editModeProvider?() ?? false, nil)
+
+        case "addInstance":
+            guard let widget = body["widget"] as? String else {
+                replyHandler(nil, "addInstance: missing widget"); return
+            }
+            let inst = instances.add(widget: widget)
+            replyHandler(["id": inst.id, "widget": inst.widget,
+                          "x": inst.x ?? 0, "y": inst.y ?? 0], nil)
+            onInstancesChanged?()
 
         case "shell":
             guard let id = body["id"] as? String,
@@ -65,12 +89,20 @@ final class NativeBridge: NSObject, WKScriptMessageHandler, WKScriptMessageHandl
         guard let body = message.body as? [String: Any],
               let action = body["action"] as? String else { return }
         switch action {
-        case "savePosition":
+        case "moveInstance":
             if let id = body["id"] as? String,
                let x = (body["x"] as? NSNumber)?.doubleValue,
                let y = (body["y"] as? NSNumber)?.doubleValue {
-                positions.set(id: id, x: x, y: y)
+                instances.move(id: id, x: x, y: y)
             }
+        case "removeInstance":
+            if let id = body["id"] as? String {
+                instances.remove(id: id)
+                onInstancesChanged?()
+            }
+        case "closePicker":
+            onClosePicker?()
+
         case "backdrops":
             let frames = ((body["frames"] as? [[String: Any]]) ?? []).compactMap { f -> BackdropFrame? in
                 guard let id = f["id"] as? String,

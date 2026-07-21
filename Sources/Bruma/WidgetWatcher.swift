@@ -1,15 +1,17 @@
 import Foundation
 import CoreServices
 
-/// Recursively watches the widgets directory and fires `onChange` (debounced,
-/// on the main queue) whenever anything under it is added, edited, or removed.
+/// Recursively watches the support directory and fires `onChange` (debounced,
+/// on the main queue) with the accumulated set of changed paths whenever
+/// anything under it is added, edited, or removed.
 final class WidgetWatcher {
     private var stream: FSEventStreamRef?
     private let path: String
-    private let onChange: () -> Void
+    private let onChange: ([String]) -> Void
     private var debounce: DispatchWorkItem?
+    private var pendingPaths: [String] = []
 
-    init(path: String, onChange: @escaping () -> Void) {
+    init(path: String, onChange: @escaping ([String]) -> Void) {
         self.path = path
         self.onChange = onChange
     }
@@ -20,10 +22,13 @@ final class WidgetWatcher {
             info: Unmanaged.passUnretained(self).toOpaque(),
             retain: nil, release: nil, copyDescription: nil)
 
-        let callback: FSEventStreamCallback = { _, info, _, _, _, _ in
+        let callback: FSEventStreamCallback = { _, info, numEvents, eventPaths, _, _ in
             guard let info = info else { return }
             let watcher = Unmanaged<WidgetWatcher>.fromOpaque(info).takeUnretainedValue()
-            watcher.fire()
+            // With kFSEventStreamCreateFlagUseCFTypes, eventPaths is a CFArray of CFString.
+            let paths = (Unmanaged<CFArray>.fromOpaque(eventPaths).takeUnretainedValue()
+                         as? [String]) ?? []
+            watcher.fire(paths: paths)
         }
 
         stream = FSEventStreamCreate(
@@ -33,16 +38,24 @@ final class WidgetWatcher {
             [path] as CFArray,
             FSEventStreamEventId(kFSEventStreamEventIdSinceNow),
             0.3, // latency seconds
-            FSEventStreamCreateFlags(kFSEventStreamCreateFlagFileEvents | kFSEventStreamCreateFlagNoDefer)
+            FSEventStreamCreateFlags(kFSEventStreamCreateFlagFileEvents
+                                     | kFSEventStreamCreateFlagNoDefer
+                                     | kFSEventStreamCreateFlagUseCFTypes)
         )
         guard let stream = stream else { return }
         FSEventStreamSetDispatchQueue(stream, DispatchQueue.main)
         FSEventStreamStart(stream)
     }
 
-    private func fire() {
+    private func fire(paths: [String]) {
+        pendingPaths.append(contentsOf: paths)
         debounce?.cancel()
-        let work = DispatchWorkItem { [weak self] in self?.onChange() }
+        let work = DispatchWorkItem { [weak self] in
+            guard let self else { return }
+            let paths = self.pendingPaths
+            self.pendingPaths = []
+            self.onChange(paths)
+        }
         debounce = work
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.2, execute: work)
     }

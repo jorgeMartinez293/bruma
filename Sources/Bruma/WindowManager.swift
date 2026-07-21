@@ -20,6 +20,17 @@ final class WindowManager: BackdropDelegate {
             name: NSApplication.didChangeScreenParametersNotification, object: nil)
     }
 
+    private(set) var editMode = false
+
+    /// Edit mode = picker drawer open: desktop windows accept clicks so
+    /// instances can be dragged and removed; the JS runtime shows the
+    /// per-instance remove badges.
+    func setEditMode(_ on: Bool) {
+        editMode = on
+        for w in windows { w.setInteractive(on) }
+        for h in hosts { h.setEditMode(on) }
+    }
+
     @objc func rebuild() {
         for w in windows { w.orderOut(nil); w.close() }
         windows.removeAll()
@@ -46,6 +57,9 @@ final class WindowManager: BackdropDelegate {
             hosts.append(host)
             backdrops.append(backdrop)
         }
+
+        // Screen change while the picker is open: keep the fresh windows editable.
+        if editMode { setEditMode(true) }
     }
 
     // MARK: BackdropDelegate

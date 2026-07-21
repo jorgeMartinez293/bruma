@@ -1,17 +1,22 @@
 /* Bruma widget runtime — loads Übersicht-style widgets in WKWebView.
  *
- * Per widget:
- *   1. Babel-transform the JSX/ESM source, eval it as a CommonJS module.
+ * Widgets are *presets*; what gets mounted are *instances* (a preset placed
+ * at a position, any number of times). Per instance:
+ *   1. Babel-transform the preset's JSX/ESM source, eval it as a CommonJS module.
  *   2. Read exports: command, refreshFrequency, className, render.
  *   3. Run `command` via the native shell bridge on an interval; pass
  *      { output, error } to render(); mount with React.
- *   4. Inject `className` as CSS scoped to the widget's wrapper.
+ *   4. Inject `className` as CSS scoped to the instance's wrapper.
+ *
+ * Edit mode (picker drawer open): instances become clickable — drag to move
+ * (position saved natively per instance), ✕ badge to remove.
  */
 (function () {
   "use strict";
 
   var root = document.getElementById("root");
-  var instances = []; // { interval, reactRoot, styleEl, wrap }
+  var instances = []; // { id, widgetId, glass, interval, reactRoot, styleEl, wrap }
+  var editMode = false;
 
   // ---- native bridges -------------------------------------------------------
 
@@ -78,10 +83,10 @@
 
   // ---- CSS scoping ----------------------------------------------------------
 
-  function rewriteUrls(css, id) {
+  function rewriteUrls(css, widgetId) {
     return css.replace(/url\(\s*(['"]?)([^'")]+)\1\s*\)/g, function (m, q, p) {
       if (/^(https?:|data:|archw:|\/)/.test(p)) return m;
-      return "url(" + q + "archw://widget/" + id + "/" + p + q + ")";
+      return "url(" + q + "archw://widget/" + widgetId + "/" + p + q + ")";
     });
   }
 
@@ -110,10 +115,11 @@
 
   function safeId(id) { return "wid_" + id.replace(/[^A-Za-z0-9_-]/g, "_"); }
 
-  function buildStyle(id, className) {
+  // Scope selector uses the *instance* id; asset URLs use the *widget* id.
+  function buildStyle(instanceId, widgetId, className) {
     var cssText = Array.isArray(className) ? className.join("\n") : (className || "");
-    var parts = extractAtRules(rewriteUrls(cssText, id));
-    var sel = "#" + safeId(id);
+    var parts = extractAtRules(rewriteUrls(cssText, widgetId));
+    var sel = "#" + safeId(instanceId);
     var style = document.createElement("style");
     // Relies on native CSS nesting (Safari 17+) for the nested selectors.
     style.textContent = parts.globals + "\n" + sel + " {\n" + parts.rest + "\n}\n";
@@ -121,7 +127,7 @@
   }
 
   // ---- native glass backdrops ----------------------------------------------
-  // Report the frame of every glass-enabled widget so AppKit can place a real
+  // Report the frame of every glass-enabled instance so AppKit can place a real
   // material view (Liquid Glass) behind the transparent webview. CSS
   // backdrop-filter cannot blur the wallpaper — only native views can.
 
@@ -148,30 +154,90 @@
 
   var backdropObserver = new ResizeObserver(syncBackdrops);
 
-  // ---- mount one widget -----------------------------------------------------
+  // ---- edit mode: drag + remove --------------------------------------------
 
-  function mountWidget(item, positions) {
+  function beginDrag(inst, e) {
+    if (!editMode || e.button !== 0) return;
+    if (e.target.closest(".bruma-remove")) return;
+    e.preventDefault();
+
+    var rect = inst.wrap.getBoundingClientRect();
+    var dx = e.clientX - rect.left;
+    var dy = e.clientY - rect.top;
+
+    // Pin the current spot as left/top so widgets positioned via CSS
+    // right/bottom don't jump when we start writing left/top.
+    inst.wrap.style.left = rect.left + "px";
+    inst.wrap.style.top = rect.top + "px";
+    inst.wrap.style.right = "auto";
+    inst.wrap.style.bottom = "auto";
+    inst.wrap.classList.add("dragging");
+
+    function move(ev) {
+      inst.wrap.style.left = (ev.clientX - dx) + "px";
+      inst.wrap.style.top = (ev.clientY - dy) + "px";
+      syncBackdrops();
+    }
+    function up() {
+      document.removeEventListener("mousemove", move);
+      document.removeEventListener("mouseup", up);
+      inst.wrap.classList.remove("dragging");
+      var r = inst.wrap.getBoundingClientRect();
+      notify("moveInstance", { id: inst.id, x: r.left, y: r.top });
+      syncBackdrops();
+    }
+    document.addEventListener("mousemove", move);
+    document.addEventListener("mouseup", up);
+  }
+
+  // ---- mount one instance ---------------------------------------------------
+
+  function mountInstance(preset, data) {
     var widget;
     try {
-      widget = evaluateWidget(item.source);
+      widget = evaluateWidget(preset.source);
     } catch (e) {
-      log("widget '" + item.id + "' failed to load:", String(e));
+      log("widget '" + preset.id + "' failed to load:", String(e));
       return;
     }
 
     var wrap = document.createElement("div");
     wrap.className = "widget";
-    wrap.id = safeId(item.id);
+    wrap.id = safeId(data.id);
 
-    var styleEl = buildStyle(item.id, widget.className);
+    var styleEl = buildStyle(data.id, preset.id, widget.className);
     document.head.appendChild(styleEl);
 
-    var pos = positions[item.id];
-    if (pos) { wrap.style.left = pos.x + "px"; wrap.style.top = pos.y + "px"; }
+    if (typeof data.x === "number" && typeof data.y === "number") {
+      wrap.style.left = data.x + "px";
+      wrap.style.top = data.y + "px";
+      wrap.style.right = "auto";
+      wrap.style.bottom = "auto";
+    }
+
+    // React owns `body`'s children, so the remove badge lives as a sibling
+    // overlay next to the mount node instead of inside it.
+    var body = document.createElement("div");
+    body.className = "widget-body";
+    wrap.appendChild(body);
+
+    var removeBtn = document.createElement("div");
+    removeBtn.className = "bruma-remove";
+    removeBtn.textContent = "−"; // minus sign, like native macOS widgets
+    removeBtn.addEventListener("click", function (e) {
+      e.stopPropagation();
+      notify("removeInstance", { id: data.id });
+    });
+    wrap.appendChild(removeBtn);
+
+    var inst = { id: data.id, widgetId: preset.id, glass: widget.glass,
+                 interval: null, reactRoot: null, styleEl: styleEl, wrap: wrap };
+    wrap.addEventListener("mousedown", function (e) { beginDrag(inst, e); });
 
     root.appendChild(wrap);
 
-    var reactRoot = window.ReactDOM.createRoot(wrap);
+    var reactRoot = window.ReactDOM.createRoot(body);
+    inst.reactRoot = reactRoot;
 
     function draw(output, error) {
       if (typeof widget.render !== "function") return;
@@ -186,7 +252,8 @@
     function tick() {
       var cmd = widget.command;
       if (typeof cmd === "string" && cmd.trim()) {
-        call("shell", { id: item.id, command: cmd }).then(function (r) {
+        // Shell cwd resolves from the *preset* id (the widget's folder).
+        call("shell", { id: preset.id, command: cmd }).then(function (r) {
           draw((r && r.output) || "", (r && r.error) || "");
         });
       } else {
@@ -194,16 +261,14 @@
       }
     }
 
-    var interval = null;
     tick();
     var freq = widget.refreshFrequency;
     if (freq !== false) {
       var ms = (typeof freq === "number" && freq > 0) ? freq : 1000;
-      interval = setInterval(tick, ms);
+      inst.interval = setInterval(tick, ms);
     }
 
-    instances.push({ id: item.id, glass: widget.glass, interval: interval,
-                     reactRoot: reactRoot, styleEl: styleEl, wrap: wrap });
+    instances.push(inst);
     if (widget.glass) backdropObserver.observe(wrap);
   }
 
@@ -221,18 +286,30 @@
     syncBackdrops();
   }
 
+  function setEditMode(on) {
+    editMode = !!on;
+    document.body.classList.toggle("edit", editMode);
+  }
+
   function start() {
-    Promise.all([call("getPositions"), call("listWidgets")]).then(function (res) {
-      var positions = res[0] || {};
-      var widgets = res[1] || [];
-      widgets.forEach(function (item) { mountWidget(item, positions); });
-      syncBackdrops();
-      log("loaded " + widgets.length + " widget(s)");
-    }).catch(function (e) { log("start failed:", String(e)); });
+    Promise.all([call("listWidgets"), call("listInstances"), call("getEditMode")])
+      .then(function (res) {
+        var presets = {};
+        (res[0] || []).forEach(function (p) { presets[p.id] = p; });
+        var placed = res[1] || [];
+        setEditMode(res[2]);
+        placed.forEach(function (data) {
+          var preset = presets[data.widget];
+          if (preset) mountInstance(preset, data);
+        });
+        syncBackdrops();
+        log("loaded " + placed.length + " instance(s)");
+      }).catch(function (e) { log("start failed:", String(e)); });
   }
 
   window.__arch = {
-    reloadAll: function () { teardown(); start(); }
+    reloadAll: function () { teardown(); start(); },
+    setEditMode: setEditMode
   };
 
   start();

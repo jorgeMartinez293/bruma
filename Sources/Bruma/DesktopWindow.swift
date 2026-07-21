@@ -31,5 +31,14 @@ final class DesktopWindow: NSWindow {
         setFrame(screen.frame, display: true)
     }
 
+    /// Edit mode: while the widget picker is open, the window accepts clicks
+    /// (drag / remove instances) and floats just above the Finder desktop-icons
+    /// layer so it — not Finder — receives them. Still below normal windows.
+    func setInteractive(_ on: Bool) {
+        ignoresMouseEvents = !on
+        level = on
+            ? NSWindow.Level(rawValue: Int(CGWindowLevelForKey(.desktopIconWindow)) + 1)
+            : NSWindow.Level(rawValue: Int(CGWindowLevelForKey(.desktopWindow)))
+    }
 
 }

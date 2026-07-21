@@ -5,7 +5,7 @@ Widgets listos para usar con bruma. Cada carpeta es un widget autocontenido.
 | Widget | Qué hace |
 |---|---|
 | [`bruma-clock`](bruma-clock/) | Reloj analógico 1×1 con fondo Liquid Glass; colores siguen el tema del sistema. |
-| [`bruma-month`](bruma-month/) | Mes actual en grande con 12 marcas tipo esfera, 1×1, Liquid Glass. |
+| [`bruma-date`](bruma-date/) | Día del mes en grande, con 12 marcas tipo esfera que señalan el mes actual, 1×1, Liquid Glass. |
 | [`bruma-cpu`](bruma-cpu/) | Uso de CPU de los últimos ~2 minutos (área + línea), 2×1, Liquid Glass. |
 
 ## Instalar
@@ -28,5 +28,5 @@ entra en la carpeta del widget, abre el `.jsx`, botón **Raw** → guardar como
 Cada widget trae una posición por defecto (`top`/`left` en su `className`). Para moverlo,
 usa el **modo edición** del menú de la barra y arrástralo; la posición se guarda sola.
 
-Los tres widgets están pensados como rejilla estilo macOS: `bruma-clock` y `bruma-month`
+Los tres widgets están pensados como rejilla estilo macOS: `bruma-clock` y `bruma-date`
 arriba (1×1 cada uno) y `bruma-cpu` debajo (2×1), con 16 px de separación.

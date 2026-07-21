@@ -32,4 +32,9 @@ final class WebHost {
         webView.evaluateJavaScript("window.__arch && window.__arch.reloadAll();", completionHandler: nil)
     }
 
+    func setEditMode(_ on: Bool) {
+        webView.evaluateJavaScript("window.__arch && window.__arch.setEditMode(\(on));",
+                                   completionHandler: nil)
+    }
+
 }

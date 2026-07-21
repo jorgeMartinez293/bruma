@@ -1,8 +1,8 @@
-// Calendario de meses — número del mes en grande y 12 marcas tipo esfera.
+// Calendario — número del día en grande y 12 marcas tipo esfera para el mes.
 // Fondo: Liquid Glass nativo (glass = true); colores siguen el tema del sistema.
-export const command = "date +%m";
+export const command = 'date "+%d %m"';
 
-export const refreshFrequency = 3600000; // 1 h
+export const refreshFrequency = 60000; // 1 min
 
 export const glass = true;
 
@@ -60,7 +60,9 @@ const monthTick = (i, current) => {
 };
 
 export const render = ({ output }) => {
-  const month = parseInt((output || "").trim(), 10) || 1;
+  const [d, m] = (output || "").trim().split(/\s+/);
+  const day = parseInt(d, 10) || 1;
+  const month = parseInt(m, 10) || 1;
 
   return (
     <svg width="170" height="170" viewBox="0 0 170 170">
@@ -71,7 +73,7 @@ export const render = ({ output }) => {
       </text>
       <text x={R} y={96} textAnchor="middle" dominantBaseline="central"
         style={{ fill: "var(--fg)" }} fontSize="58" fontWeight="700">
-        {month}
+        {day}
       </text>
     </svg>
   );

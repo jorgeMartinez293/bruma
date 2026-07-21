@@ -33,11 +33,21 @@ la barra de menú. Para que arranque al iniciar sesión: Ajustes del Sistema →
 
 ## Menú de la barra
 
-- **Modo edición (mover widgets)** — vuelve los widgets arrastrables; suelta para guardar la
-  posición. Fuera de este modo, el escritorio es *click-through* (los clics pasan a los iconos).
+- **Editar widgets…** — abre la galería: un panel de cristal que se despliega desde la parte
+  inferior de la pantalla con una vista previa de cada widget disponible. Cada widget es un
+  *preset*: haz clic en su tarjeta para colocar una instancia nueva en el escritorio, tantas
+  veces como quieras (como los widgets nativos de macOS). Mientras la galería está abierta,
+  los widgets del escritorio se pueden **arrastrar** (la posición se guarda al soltar) y
+  **eliminar** con la insignia ⊖ de su esquina. Al cerrar la galería, el escritorio vuelve a
+  ser *click-through* (los clics pasan a los iconos).
 - **Recargar widgets**
 - **Abrir carpeta de widgets**
 - **Salir**
+
+Las instancias colocadas se guardan en `~/Library/Application Support/Bruma/instances.json`
+(`[{ id, widget, x, y }]`). Los antiguos `states.json` + `positions.json` se migran
+automáticamente la primera vez: cada widget activado se convierte en una instancia con su
+posición guardada.
 
 ## Widgets incluidos
 
@@ -99,19 +109,21 @@ porque el webview es transparente y no hay nada web detrás que difuminar. Para 
 **Assets relativos** (fuentes, imágenes) se resuelven contra la carpeta del widget vía el
 esquema interno `archw://`. Ej.: `@font-face { src: url('MiFuente.otf'); }`.
 
-**Posición:** colócalo con `top/left/right/bottom` en `className`, o arrástralo en *modo edición*
-(la posición arrastrada se guarda en `positions.json` y gana sobre el CSS).
+**Posición:** el `top/left/right/bottom` del `className` es la posición por defecto; cada
+instancia colocada guarda la suya en `instances.json` (arrastra con la galería abierta) y
+gana sobre el CSS.
 
 ## Arquitectura
 
 - `Sources/bruma/` — capa nativa: ventana de escritorio transparente
   (`DesktopWindow`), host del webview (`WebHost`), ejecución de shell (`ShellRunner`),
-  esquema de assets (`WidgetSchemeHandler`), watcher (`WidgetWatcher`), posiciones
-  (`PositionStore`), menú/ciclo de vida (`AppDelegate`), una ventana por pantalla
-  (`WindowManager`).
+  esquema de assets (`WidgetSchemeHandler`), watcher (`WidgetWatcher`), instancias
+  colocadas (`InstanceStore`), galería inferior (`PickerPanel`), menú/ciclo de vida
+  (`AppDelegate`), una ventana por pantalla (`WindowManager`).
 - `Sources/bruma/Resources/runtime/` — runtime web: `index.html` + `runtime.js`
   (transforma JSX con Babel, ejecuta el comando vía puente nativo, renderiza con React,
-  inyecta el CSS y gestiona el arrastre). React/ReactDOM/Babel vendorizados en `vendor/`.
+  inyecta el CSS y gestiona arrastre/eliminación en modo edición), y `picker.html` +
+  `picker.js` (la galería con vistas previas). React/ReactDOM/Babel vendorizados en `vendor/`.
 
 ## Límites del MVP
 

@@ -19,12 +19,15 @@ enum Paths {
     /// Folder watched for widgets. Drop `<name>/<name>.jsx` widgets here.
     static let widgetsDir = supportDir.appendingPathComponent("widgets", isDirectory: true)
 
-    /// Persisted drag positions: { widgetId: { x, y } }.
+    /// Placed widget instances: [ { id, widget, x, y } ]. This is the live
+    /// state since the preset/instance model; the two files below are only
+    /// read once to migrate from the old singleton model.
+    static let instancesFile = supportDir.appendingPathComponent("instances.json")
+
+    /// Legacy drag positions: { widgetId: { x, y } }. Migration source only.
     static let positionsFile = supportDir.appendingPathComponent("positions.json")
 
-    /// Persisted widget allowlist: { "enabled": [widgetId, …] } — unlisted = off.
-    /// File-backed (not UserDefaults) so other apps — e.g. vaho's themes mode —
-    /// can snapshot and restore it alongside positions.json.
+    /// Legacy widget allowlist: { "enabled": [widgetId, …] }. Migration source only.
     static let statesFile = supportDir.appendingPathComponent("states.json")
 
     /// Übersicht's widgets dir — used once to seed a test widget on first run.

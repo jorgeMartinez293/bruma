@@ -10,32 +10,43 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var windowManager: WindowManager!
     private var watcher: WidgetWatcher!
     private var store: WidgetStore!
-    private var positions: PositionStore!
+    private var instances: InstanceStore!
+    private var picker: PickerPanel?
+    private var bridge: NativeBridge!
+    private var schemeHandler: WidgetSchemeHandler!
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         Paths.ensureDirectories()
         seedTestWidgetIfEmpty()
 
         store = WidgetStore(root: Paths.widgetsDir)
-        positions = PositionStore(file: Paths.positionsFile)
-        let bridge = NativeBridge(store: store, positions: positions)
+        instances = InstanceStore(file: Paths.instancesFile, widgetStore: store)
+        bridge = NativeBridge(store: store, instances: instances)
 
         guard let runtimeRoot = Bundle.module.url(forResource: "runtime", withExtension: nil) else {
             NSLog("Bruma: runtime bundle missing"); NSApp.terminate(nil); return
         }
-        let schemeHandler = WidgetSchemeHandler(runtimeRoot: runtimeRoot, store: store)
+        schemeHandler = WidgetSchemeHandler(runtimeRoot: runtimeRoot, store: store)
 
         windowManager = WindowManager(bridge: bridge, schemeHandler: schemeHandler)
 
-        // Watch the whole support dir: covers widget edits (hot-reload) AND external
-        // overwrites of positions.json / states.json — e.g. when LiquidNotch's theme
-        // tool restores a saved layout — re-reading both stores and refreshing the menu.
-        watcher = WidgetWatcher(path: Paths.supportDir.path) { [weak self] in
+        bridge.onInstancesChanged = { [weak self] in self?.windowManager.reloadWidgets() }
+        bridge.onClosePicker = { [weak self] in self?.closePicker() }
+        bridge.editModeProvider = { [weak self] in self?.windowManager.editMode ?? false }
+
+        // Watch the whole support dir: widget edits (hot-reload) and external
+        // overwrites of instances.json (e.g. hand-edited or theme tools) refresh
+        // the desktop. Our own instance saves round-trip through the watcher too,
+        // so reloadIfChangedExternally() filters them out — otherwise every drag
+        // would remount all widgets.
+        watcher = WidgetWatcher(path: Paths.supportDir.path) { [weak self] paths in
             guard let self else { return }
-            self.positions.reload()
-            self.store.reload()
-            self.windowManager.reloadWidgets()
-            self.rebuildMenu()
+            let instancesChanged = self.instances.reloadIfChangedExternally()
+            let widgetsTouched = paths.contains { $0.contains("/widgets/") }
+            if instancesChanged || widgetsTouched {
+                self.store.reload()
+                self.windowManager.reloadWidgets()
+            }
         }
         watcher.start()
 
@@ -73,25 +84,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     private func rebuildMenu() {
         let menu = NSMenu()
+        menu.addItem(withTitle: "Editar widgets…", action: #selector(togglePicker), keyEquivalent: "e").target = self
+        menu.addItem(.separator())
         menu.addItem(withTitle: "Recargar widgets", action: #selector(reload), keyEquivalent: "r").target = self
         menu.addItem(withTitle: "Abrir carpeta de widgets", action: #selector(openFolder), keyEquivalent: "").target = self
-
-        menu.addItem(.separator())
-
-        let widgets = store.listAll()
-        if widgets.isEmpty {
-            let empty = NSMenuItem(title: "No hay widgets", action: nil, keyEquivalent: "")
-            empty.isEnabled = false
-            menu.addItem(empty)
-        } else {
-            for widget in widgets {
-                let item = NSMenuItem(title: widget.id, action: #selector(toggleWidget(_:)), keyEquivalent: "")
-                item.target = self
-                item.representedObject = widget.id
-                item.state = store.isEnabled(id: widget.id) ? .on : .off
-                menu.addItem(item)
-            }
-        }
 
         menu.addItem(.separator())
         let update = NSMenuItem(title: "Buscar actualizaciones…",
@@ -103,19 +99,40 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         statusItem.menu = menu
     }
 
+    // MARK: Picker drawer
+
+    @objc private func togglePicker() {
+        if let picker, picker.isVisible {
+            closePicker()
+        } else {
+            openPicker()
+        }
+    }
+
+    private func openPicker() {
+        if picker == nil {
+            let panel = PickerPanel(bridge: bridge, schemeHandler: schemeHandler)
+            panel.onClose = { [weak self] in self?.closePicker() }
+            picker = panel
+        }
+        let mouse = NSEvent.mouseLocation
+        let screen = NSScreen.screens.first { NSMouseInRect(mouse, $0.frame, false) }
+            ?? NSScreen.main ?? NSScreen.screens[0]
+        windowManager.setEditMode(true)
+        picker?.show(on: screen)
+    }
+
+    private func closePicker() {
+        picker?.hide()
+        windowManager.setEditMode(false)
+    }
+
     @objc private func reload() {
         windowManager.reloadWidgets()
     }
 
     @objc private func openFolder() {
         NSWorkspace.shared.open(Paths.widgetsDir)
-    }
-
-    @objc private func toggleWidget(_ sender: NSMenuItem) {
-        guard let id = sender.representedObject as? String else { return }
-        store.setEnabled(!store.isEnabled(id: id), forId: id)
-        windowManager.reloadWidgets()
-        rebuildMenu()
     }
 
     @objc private func quit() {
