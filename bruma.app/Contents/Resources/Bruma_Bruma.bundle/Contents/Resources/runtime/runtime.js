@@ -17,6 +17,14 @@
   var root = document.getElementById("root");
   var instances = []; // { id, widgetId, glass, interval, reactRoot, styleEl, wrap }
   var editMode = false;
+  var snapToGrid = false;
+  // Grid step = the margin between widgets (16px). Fine enough to nudge
+  // widgets freely while keeping edges and gaps on a consistent rhythm: the
+  // small widgets (170) and the long Claude widget (356 = 170 + 170 + 16) all
+  // line up cleanly on this step.
+  var GRID = 15; // px; drag positions snap to multiples of this when enabled
+
+  function snap(v) { return snapToGrid ? Math.round(v / GRID) * GRID : v; }
 
   // ---- native bridges -------------------------------------------------------
 
@@ -174,8 +182,8 @@
     inst.wrap.classList.add("dragging");
 
     function move(ev) {
-      inst.wrap.style.left = (ev.clientX - dx) + "px";
-      inst.wrap.style.top = (ev.clientY - dy) + "px";
+      inst.wrap.style.left = snap(ev.clientX - dx) + "px";
+      inst.wrap.style.top = snap(ev.clientY - dy) + "px";
       syncBackdrops();
     }
     function up() {
@@ -183,7 +191,7 @@
       document.removeEventListener("mouseup", up);
       inst.wrap.classList.remove("dragging");
       var r = inst.wrap.getBoundingClientRect();
-      notify("moveInstance", { id: inst.id, x: r.left, y: r.top });
+      notify("moveInstance", { id: inst.id, x: snap(r.left), y: snap(r.top) });
       syncBackdrops();
     }
     document.addEventListener("mousemove", move);
@@ -291,13 +299,23 @@
     document.body.classList.toggle("edit", editMode);
   }
 
+  function setSnapToGrid(on) {
+    snapToGrid = !!on;
+    document.body.style.setProperty("--grid", GRID + "px");
+    document.body.classList.toggle("snap", snapToGrid);
+  }
+
   function start() {
-    Promise.all([call("listWidgets"), call("listInstances"), call("getEditMode")])
+    Promise.all([call("listWidgets"),
+                 call("listInstances", { screen: window.__brumaScreen }),
+                 call("getEditMode"),
+                 call("getSnapToGrid")])
       .then(function (res) {
         var presets = {};
         (res[0] || []).forEach(function (p) { presets[p.id] = p; });
         var placed = res[1] || [];
         setEditMode(res[2]);
+        setSnapToGrid(res[3]);
         placed.forEach(function (data) {
           var preset = presets[data.widget];
           if (preset) mountInstance(preset, data);
@@ -309,7 +327,8 @@
 
   window.__arch = {
     reloadAll: function () { teardown(); start(); },
-    setEditMode: setEditMode
+    setEditMode: setEditMode,
+    setSnapToGrid: setSnapToGrid
   };
 
   start();

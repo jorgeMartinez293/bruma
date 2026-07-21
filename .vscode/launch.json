@@ -1,0 +1,24 @@
+{
+    "configurations": [
+        {
+            "type": "swift",
+            "request": "launch",
+            "args": [],
+            "cwd": "${workspaceFolder:bruma}",
+            "name": "Debug Bruma",
+            "target": "Bruma",
+            "configuration": "debug",
+            "preLaunchTask": "swift: Build Debug Bruma"
+        },
+        {
+            "type": "swift",
+            "request": "launch",
+            "args": [],
+            "cwd": "${workspaceFolder:bruma}",
+            "name": "Release Bruma",
+            "target": "Bruma",
+            "configuration": "release",
+            "preLaunchTask": "swift: Build Release Bruma"
+        }
+    ]
+}

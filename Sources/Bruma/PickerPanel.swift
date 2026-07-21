@@ -70,6 +70,34 @@ final class PickerPanel: NSPanel {
 
     override func cancelOperation(_ sender: Any?) { onClose?() }
 
+    // MARK: Shelf drag
+
+    /// Snapshots the card at `cssRect` (viewport coords, top-left origin) so the
+    /// drag ghost carries the real preview. Crops in pixel space via CGImage,
+    /// which is top-left based — no origin-flip guesswork.
+    func snapshot(cssRect: CGRect, completion: @escaping (NSImage?) -> Void) {
+        let config = WKSnapshotConfiguration()
+        let scale = webView.window?.backingScaleFactor ?? 2
+        webView.takeSnapshot(with: config) { image, _ in
+            guard let image,
+                  let cg = image.cgImage(forProposedRect: nil, context: nil, hints: nil) else {
+                completion(nil); return
+            }
+            let px = CGRect(x: cssRect.minX * scale, y: cssRect.minY * scale,
+                            width: cssRect.width * scale, height: cssRect.height * scale)
+            guard let cropped = cg.cropping(to: px) else { completion(nil); return }
+            completion(NSImage(cgImage: cropped,
+                               size: NSSize(width: cssRect.width, height: cssRect.height)))
+        }
+    }
+
+    /// Clears any "lifted card" styling once a shelf drag ends.
+    func resetDrag() {
+        webView.evaluateJavaScript(
+            "window.__picker && window.__picker.dragEnded && window.__picker.dragEnded();",
+            completionHandler: nil)
+    }
+
     /// Slides the drawer up from the bottom edge of `screen`.
     func show(on screen: NSScreen) {
         let width = min(screen.visibleFrame.width - 40, 1080)

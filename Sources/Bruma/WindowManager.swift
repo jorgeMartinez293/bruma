@@ -39,8 +39,8 @@ final class WindowManager: BackdropDelegate {
 
         for screen in NSScreen.screens {
             let window = DesktopWindow(screen: screen)
-            let host = WebHost(frame: window.contentLayoutRect, bridge: bridge,
-                               schemeHandler: schemeHandler)
+            let host = WebHost(frame: window.contentLayoutRect, screenID: screen.displayID,
+                               bridge: bridge, schemeHandler: schemeHandler)
 
             // Native glass sits behind the transparent webview: the web layer
             // draws only widget content; the material comes from AppKit.
@@ -73,5 +73,11 @@ final class WindowManager: BackdropDelegate {
 
     func reloadWidgets() {
         for host in hosts { host.reloadWidgets() }
+    }
+
+    /// Push a live grid-snap change to every desktop runtime (no reload needed;
+    /// the next drag picks up the new value).
+    func setSnapToGrid(_ on: Bool) {
+        for h in hosts { h.setSnapToGrid(on) }
     }
 }

@@ -11,9 +11,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var watcher: WidgetWatcher!
     private var store: WidgetStore!
     private var instances: InstanceStore!
+    private var settings: SettingsStore!
     private var picker: PickerPanel?
     private var bridge: NativeBridge!
     private var schemeHandler: WidgetSchemeHandler!
+    private let dragController = ShelfDragController()
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         Paths.ensureDirectories()
@@ -21,7 +23,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
         store = WidgetStore(root: Paths.widgetsDir)
         instances = InstanceStore(file: Paths.instancesFile, widgetStore: store)
-        bridge = NativeBridge(store: store, instances: instances)
+        settings = SettingsStore(file: Paths.settingsFile)
+        bridge = NativeBridge(store: store, instances: instances, settings: settings)
 
         guard let runtimeRoot = Bundle.module.url(forResource: "runtime", withExtension: nil) else {
             NSLog("Bruma: runtime bundle missing"); NSApp.terminate(nil); return
@@ -31,8 +34,25 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         windowManager = WindowManager(bridge: bridge, schemeHandler: schemeHandler)
 
         bridge.onInstancesChanged = { [weak self] in self?.windowManager.reloadWidgets() }
+        bridge.onSyncMonitorsChanged = { [weak self] in self?.windowManager.reloadWidgets() }
+        bridge.onSnapToGridChanged = { [weak self] on in self?.windowManager.setSnapToGrid(on) }
         bridge.onClosePicker = { [weak self] in self?.closePicker() }
         bridge.editModeProvider = { [weak self] in self?.windowManager.editMode ?? false }
+        bridge.onBeginCardDrag = { [weak self] widget, rect, grabX, grabY in
+            self?.beginCardDrag(widget: widget, rect: rect, grabX: grabX, grabY: grabY)
+        }
+
+        // Drag a card off the shelf → place the new instance exactly where it's
+        // dropped. Bind to the drop screen in separate mode; leave unbound (shows
+        // everywhere) in sync mode, matching click-placement.
+        dragController.pickerFrameProvider = { [weak self] in self?.picker?.frame ?? .zero }
+        dragController.onEnd = { [weak self] in self?.picker?.resetDrag() }
+        dragController.onDrop = { [weak self] widget, x, y, screen in
+            guard let self else { return }
+            let bind = self.settings.syncMonitors ? nil : screen
+            self.instances.add(widget: widget, screen: bind, x: x, y: y)
+            self.windowManager.reloadWidgets()
+        }
 
         // Watch the whole support dir: widget edits (hot-reload) and external
         // overwrites of instances.json (e.g. hand-edited or theme tools) refresh
@@ -118,6 +138,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         let mouse = NSEvent.mouseLocation
         let screen = NSScreen.screens.first { NSMouseInRect(mouse, $0.frame, false) }
             ?? NSScreen.main ?? NSScreen.screens[0]
+        // Instances placed from the picker bind to the monitor it opens on
+        // (used only in separate mode).
+        bridge.pickerScreenID = screen.displayID
         windowManager.setEditMode(true)
         picker?.show(on: screen)
     }
@@ -125,6 +148,17 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private func closePicker() {
         picker?.hide()
         windowManager.setEditMode(false)
+    }
+
+    /// Starts a native drag ghost for a card pulled off the shelf. The ghost
+    /// appears instantly with a placeholder, then swaps in a live snapshot of the
+    /// card once WebKit renders it.
+    private func beginCardDrag(widget: String, rect: CGRect, grabX: Double, grabY: Double) {
+        dragController.begin(widget: widget, image: nil, size: rect.size,
+                             grab: CGPoint(x: grabX, y: grabY))
+        picker?.snapshot(cssRect: rect) { [weak self] image in
+            self?.dragController.updateImage(image)
+        }
     }
 
     @objc private func reload() {

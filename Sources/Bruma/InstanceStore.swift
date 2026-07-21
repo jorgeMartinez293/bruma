@@ -6,6 +6,9 @@ struct WidgetInstance: Codable, Equatable {
     let widget: String  // preset id (folder/file name in the widgets dir)
     var x: Double?      // CSS px, top-left origin; nil = widget's own CSS position
     var y: Double?
+    var screen: String? // display id this instance is bound to; nil = unbound
+                        // (shows on every monitor in sync mode, on the primary
+                        //  monitor in separate mode)
 }
 
 /// Persists placed widget instances to instances.json.
@@ -57,21 +60,31 @@ final class InstanceStore {
         }
         instances = enabled.sorted().map { widget in
             WidgetInstance(id: Self.freshId(for: widget), widget: widget,
-                           x: points[widget]?.x, y: points[widget]?.y)
+                           x: points[widget]?.x, y: points[widget]?.y, screen: nil)
         }
     }
 
     // MARK: Mutations
 
-    /// Places a new instance of `widget`, cascading from the centre of the main
-    /// screen so consecutive placements don't stack exactly on top of each other.
+    /// Places a new instance of `widget`. With explicit `x`/`y` (a drag-drop from
+    /// the picker), it lands exactly there; otherwise it cascades from the centre
+    /// of the main screen so consecutive click-placements don't stack exactly on
+    /// top of each other. `screen` binds the instance to one monitor (separate
+    /// mode); pass nil in sync mode so it shows on every monitor.
     @discardableResult
-    func add(widget: String) -> WidgetInstance {
-        let screen = NSScreen.main?.frame ?? NSRect(x: 0, y: 0, width: 1440, height: 900)
-        let offset = Double(instances.count % 6) * 36
+    func add(widget: String, screen: String? = nil,
+             x: Double? = nil, y: Double? = nil) -> WidgetInstance {
+        let px: Double, py: Double
+        if let x, let y {
+            px = x; py = y
+        } else {
+            let bounds = NSScreen.main?.frame ?? NSRect(x: 0, y: 0, width: 1440, height: 900)
+            let offset = Double(instances.count % 6) * 36
+            px = bounds.width / 2 - 120 + offset
+            py = bounds.height / 2 - 160 + offset
+        }
         let inst = WidgetInstance(id: Self.freshId(for: widget), widget: widget,
-                                  x: screen.width / 2 - 120 + offset,
-                                  y: screen.height / 2 - 160 + offset)
+                                  x: px, y: py, screen: screen)
         instances.append(inst)
         persist()
         return inst
@@ -102,12 +115,29 @@ final class InstanceStore {
         return true
     }
 
-    /// JSON-bridge-friendly shape for the JS runtime.
-    func asArray() -> [[String: Any]] {
-        instances.map { inst in
+    /// JSON-bridge-friendly shape for the JS runtime, filtered for one monitor.
+    ///
+    /// - `screen`: the requesting host's display id (nil for the picker, which
+    ///   wants the whole list).
+    /// - `syncMonitors`: when true every monitor shows every instance. When
+    ///   false a host shows only instances bound to its own screen; instances
+    ///   with no binding fall to the primary display so nothing vanishes.
+    func asArray(forScreen screen: String? = nil, syncMonitors: Bool = true) -> [[String: Any]] {
+        let visible: [WidgetInstance]
+        if syncMonitors || screen == nil {
+            visible = instances
+        } else {
+            let primary = NSScreen.primaryID
+            visible = instances.filter { inst in
+                if let s = inst.screen { return s == screen }
+                return screen == primary
+            }
+        }
+        return visible.map { inst in
             var d: [String: Any] = ["id": inst.id, "widget": inst.widget]
             if let x = inst.x { d["x"] = x }
             if let y = inst.y { d["y"] = y }
+            if let s = inst.screen { d["screen"] = s }
             return d
         }
     }

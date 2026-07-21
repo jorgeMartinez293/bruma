@@ -10,7 +10,7 @@ export const glass = true;
 export const className = `
   top: 424px;
   left: 20px;
-  width: 356px;
+  width: 396px;
   height: 170px;
   box-sizing: border-box;
   padding: 18px 20px;
@@ -48,8 +48,8 @@ export const className = `
   }
 `;
 
-// Geometría: 356 − 2·20 de padding = 316 de ancho útil.
-const ANCHO = 316;
+// Geometría: 396 − 2·20 de padding = 356 de ancho útil.
+const ANCHO = 406;
 const LADO = 11;   // lado del cuadrado
 const HUECO = 3;   // separación entre cuadrados
 const PASO = LADO + HUECO;

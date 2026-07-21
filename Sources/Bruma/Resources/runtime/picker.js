@@ -149,12 +149,50 @@
       draw("", "");
     }
 
-    card.addEventListener("click", function () {
+    // Placement has two gestures on the same card:
+    //   · a plain click drops the widget at the cascade centre (native decides);
+    //   · a drag pulls it off the shelf — once the pointer moves past a small
+    //     threshold we hand off to a native drag ghost that carries the preview
+    //     across windows and places the instance wherever it's released.
+    // We can't drag across to the desktop in HTML (separate WKWebViews), so the
+    // native side owns everything after `beginCardDrag`.
+    function placeCentered() {
       call("addInstance", { widget: preset.id }).then(function () {
         card.classList.remove("added");
         void card.offsetWidth; // restart the pop animation
         card.classList.add("added");
       });
+    }
+
+    var DRAG_THRESHOLD = 6; // px before a press becomes a drag
+    card.addEventListener("pointerdown", function (e) {
+      if (e.button !== 0) return;
+      var rect = card.getBoundingClientRect();
+      var startX = e.clientX, startY = e.clientY;
+      var grabX = startX - rect.left, grabY = startY - rect.top;
+      var dragging = false;
+
+      function move(ev) {
+        if (dragging) return;
+        if (Math.abs(ev.clientX - startX) < DRAG_THRESHOLD &&
+            Math.abs(ev.clientY - startY) < DRAG_THRESHOLD) return;
+        dragging = true;
+        card.classList.add("lifted");
+        notify("beginCardDrag", {
+          widget: preset.id,
+          rect: { x: rect.left, y: rect.top, w: rect.width, h: rect.height },
+          grabX: grabX, grabY: grabY
+        });
+        // Native tracking takes over from here (the pointer will leave this
+        // window); we only needed to detect the drag and suppress the click.
+      }
+      function up() {
+        document.removeEventListener("pointermove", move);
+        document.removeEventListener("pointerup", up);
+        if (!dragging) placeCentered();
+      }
+      document.addEventListener("pointermove", move);
+      document.addEventListener("pointerup", up);
     });
 
     return card;
@@ -176,6 +214,24 @@
     });
   }
 
+  // ---- header toggles -------------------------------------------------------
+
+  var syncInput = document.getElementById("syncInput");
+  call("getSyncMonitors").then(function (on) {
+    syncInput.checked = on !== false; // default on
+  });
+  syncInput.addEventListener("change", function () {
+    notify("setSyncMonitors", { value: syncInput.checked });
+  });
+
+  var snapInput = document.getElementById("snapInput");
+  call("getSnapToGrid").then(function (on) {
+    snapInput.checked = on === true; // default off
+  });
+  snapInput.addEventListener("change", function () {
+    notify("setSnapToGrid", { value: snapInput.checked });
+  });
+
   document.getElementById("close").addEventListener("click", function () {
     notify("closePicker");
   });
@@ -183,6 +239,12 @@
     if (e.key === "Escape") notify("closePicker");
   });
 
-  window.__picker = { refresh: refresh };
+  // Native calls this when a shelf drag ends, so the lifted card settles back.
+  function dragEnded() {
+    var lifted = document.querySelectorAll(".card.lifted");
+    for (var i = 0; i < lifted.length; i++) lifted[i].classList.remove("lifted");
+  }
+
+  window.__picker = { refresh: refresh, dragEnded: dragEnded };
   refresh();
 })();
