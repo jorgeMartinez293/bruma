@@ -73,9 +73,13 @@ rm -f "$ZIP"
 ditto -c -k --keepParent "$APP.app" "$ZIP"
 echo "Packaged $ZIP"
 
-# 4. Appcast + deltas. Remove the previous dmg first: generate_appcast treats .dmg as
-# an update archive too and would collide with that version's .zip.
-rm -f "$DIST/$APP.dmg"
+# 4. Appcast + deltas. Remove EVERY dmg first, not just $APP.dmg: generate_appcast treats
+# any .dmg in the directory as an update archive. A failed dmg build used to leave
+# create-dmg's `rw.NNNNN.bruma.dmg` scratch file behind, and the next run silently
+# published it as a real update — a 33 MB entry pointing at a filename that exists in
+# nobody's release. At this point in the run no dmg is meant to exist yet (step 5 builds
+# it), so anything matching is leftover.
+rm -f "$DIST"/*.dmg
 GEN_APPCAST=$(find .build -maxdepth 8 -name generate_appcast -type f -perm -u+x 2>/dev/null | head -1)
 if [ -z "$GEN_APPCAST" ]; then echo "ERROR: generate_appcast not found under .build" >&2; exit 1; fi
 "$GEN_APPCAST" --download-url-prefix "$DOWNLOAD_URL_PREFIX" "$DIST"

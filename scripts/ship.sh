@@ -3,6 +3,10 @@
 # EVERYTHING. Mirrors vaho's app/scripts/ship.sh.
 #
 # Usage: scripts/ship.sh <short-version>      e.g. scripts/ship.sh 1.1
+#        RESUME=1 scripts/ship.sh <short-version>
+#          → skip step 1 and publish the artifacts already in dist/. Use this when
+#            a run died after the build (dmg, gh, Pages…) so a finished, notarized
+#            build gets published instead of rebuilt and re-bumped.
 #
 #   1. release.sh <version>  → bumps version, builds, signs, zips, deltas, appcast, dmg.
 #   2. Source repo: commit the version bump, tag v<version>, push main + tag.
@@ -35,16 +39,59 @@ if git rev-parse "v$VERSION" >/dev/null 2>&1; then
 fi
 
 # ── 1. Build + package + appcast + dmg ─────────────────────────────────────────
-say "Building & packaging $APP v$VERSION"
-"$APP_DIR/scripts/release.sh" "$VERSION"
+# RESUME=1 reuses whatever release.sh already produced in dist/ instead of running
+# it again. Everything before this point in a release is cheap; release.sh is not
+# — it bumps CFBundleVersion, does a universal build, and waits on Apple's notary
+# queue. So when a later step fails (a broken dmg, an expired gh token, a Pages
+# hiccup), re-running from scratch burns all of that AND bumps the build number
+# again for a binary nobody ever saw. Resuming publishes the artifacts that are
+# already sitting there, verified below.
+if [ "${RESUME:-0}" = "1" ]; then
+  say "RESUME=1 — reusing existing artifacts in dist/ (no rebuild, no version bump)"
+  PLIST_VERSION=$(/usr/libexec/PlistBuddy -c "Print :CFBundleShortVersionString" "$PLIST")
+  [ "$PLIST_VERSION" = "$VERSION" ] || {
+    echo "ERROR: RESUME=1 but Info.plist says v$PLIST_VERSION, not v$VERSION." >&2
+    echo "       Those artifacts are for a different version — rerun without RESUME." >&2
+    exit 1; }
+else
+  say "Building & packaging $APP v$VERSION"
+  "$APP_DIR/scripts/release.sh" "$VERSION"
+fi
 
 BUILD=$(/usr/libexec/PlistBuddy -c "Print :CFBundleVersion" "$PLIST")
 ZIP="$DIST/$APP-$VERSION.zip"
 DMG="$DIST/$APP.dmg"
 [ -f "$ZIP" ] || { echo "ERROR: $ZIP missing after build." >&2; exit 1; }
 [ -f "$DMG" ] || { echo "ERROR: $DMG missing after build." >&2; exit 1; }
+[ -f "$DIST/appcast.xml" ] || { echo "ERROR: $DIST/appcast.xml missing after build." >&2; exit 1; }
+
+# The appcast is what every installed copy reads, so it must actually advertise the
+# build we are about to publish. On a resumed run it may be stale from an earlier
+# attempt; catching that here beats shipping a release nobody is offered.
+grep -q "<sparkle:version>$BUILD</sparkle:version>" "$DIST/appcast.xml" || {
+  echo "ERROR: $DIST/appcast.xml does not advertise build $BUILD." >&2
+  echo "       Regenerate it (scripts/release.sh) before publishing." >&2; exit 1; }
+
+# Gatekeeper checks the app and the dmg separately, and an unstapled build shows the
+# "damaged / unidentified developer" dialog on first launch. NOTARIZE=0 builds are for
+# local testing only and must never reach the release repo — fail loudly if one does.
+if [ "${NOTARIZE:-1}" = "1" ]; then
+  xcrun stapler validate "$APP_DIR/$APP.app" >/dev/null 2>&1 || {
+    echo "ERROR: $APP.app has no notarization ticket stapled — refusing to publish." >&2; exit 1; }
+  xcrun stapler validate "$DMG" >/dev/null 2>&1 || {
+    echo "ERROR: $DMG has no notarization ticket stapled — refusing to publish." >&2; exit 1; }
+fi
 DELTAS=("$DIST/$APP$BUILD"-*.delta)
 [ -e "${DELTAS[0]}" ] || DELTAS=()   # first release ever has no delta
+
+# Every file the appcast points at must exist in dist/, or Sparkle hands users a 404
+# mid-update. This catches an appcast that still advertises an archive since deleted —
+# exactly how a leftover create-dmg scratch file once got published as a real update.
+while read -r ENC; do
+  [ -f "$DIST/$ENC" ] || {
+    echo "ERROR: appcast.xml references '$ENC', which is not in $DIST." >&2
+    echo "       Regenerate the appcast before publishing." >&2; exit 1; }
+done < <(grep -o 'download/[^"]*' "$DIST/appcast.xml" | sed 's|^download/||' | sort -u)
 
 # ── 2. Commit + tag + push source repo ─────────────────────────────────────────
 say "Committing & tagging source repo"

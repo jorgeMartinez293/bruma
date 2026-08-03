@@ -77,13 +77,14 @@ package:
 
 # DMG for first-time downloads (auto-updates travel as .zip via Sparkle).
 # Stable, unversioned name: the landing links releases/latest/download/bruma.dmg.
+# Built by scripts/make-dmg.sh, not create-dmg: create-dmg 1.3.0 sets the Finder
+# window's `statusbar visible`, a property macOS 26 removed, so it aborts with
+# -10006 after the build and notarization have already been paid for. See the
+# header of that script.
 dmg:
 	rm -f dist/$(APP_NAME).dmg
 	mkdir -p dist
-	create-dmg --volname "$(APP_NAME)" --window-size 500 320 --icon-size 96 \
-	  --icon "$(APP_BUNDLE)" 120 130 --app-drop-link 380 130 \
-	  --hide-extension "$(APP_BUNDLE)" \
-	  dist/$(APP_NAME).dmg $(APP_BUNDLE)
+	scripts/make-dmg.sh $(APP_BUNDLE) dist/$(APP_NAME).dmg $(APP_NAME)
 	codesign --force $(CODESIGN_FLAGS) --sign "$(SIGN_IDENTITY)" dist/$(APP_NAME).dmg
 
 # ── Notarization ──────────────────────────────────────────────────────────────

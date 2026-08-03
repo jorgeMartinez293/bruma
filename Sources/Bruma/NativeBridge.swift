@@ -4,7 +4,7 @@ import WebKit
 ///
 /// Reply channel  "arch"        — async request/response:
 ///     { action: "listWidgets" }                 -> [{ id, source }]   (all presets)
-///     { action: "listInstances", screen? }      -> [{ id, widget, x?, y?, screen? }]
+///     { action: "listInstances", screen? }      -> [{ id, widget, x?, y?, screen?, anchor? }]
 ///     { action: "addInstance", widget }         -> { id, widget, x, y }
 ///     { action: "shell", id, command }          -> { output, error }  (id = preset id)
 ///     { action: "getSyncMonitors" }             -> Bool
@@ -12,6 +12,7 @@ import WebKit
 ///
 /// Notify channel "archNotify"  — fire-and-forget:
 ///     { action: "moveInstance", id, x, y }
+///     { action: "setInstanceAnchor", id, anchor, x?, y? }
 ///     { action: "removeInstance", id }
 ///     { action: "beginCardDrag", widget, rect: {x,y,w,h}, grabX, grabY }
 ///     { action: "setSyncMonitors", value }
@@ -130,6 +131,13 @@ final class NativeBridge: NSObject, WKScriptMessageHandler, WKScriptMessageHandl
                let x = (body["x"] as? NSNumber)?.doubleValue,
                let y = (body["y"] as? NSNumber)?.doubleValue {
                 instances.move(id: id, x: x, y: y)
+            }
+        case "setInstanceAnchor":
+            if let id = body["id"] as? String,
+               let anchor = body["anchor"] as? String {
+                instances.setAnchor(id: id, anchor: anchor,
+                                    x: (body["x"] as? NSNumber)?.doubleValue,
+                                    y: (body["y"] as? NSNumber)?.doubleValue)
             }
         case "removeInstance":
             if let id = body["id"] as? String {

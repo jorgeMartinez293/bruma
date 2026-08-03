@@ -5,10 +5,21 @@ struct WidgetInstance: Codable, Equatable {
     let id: String      // unique instance id ("<widget>-<suffix>")
     let widget: String  // preset id (folder/file name in the widgets dir)
     var x: Double?      // CSS px, top-left origin; nil = widget's own CSS position
-    var y: Double?
+    var y: Double?      // point measured at `anchor`, not necessarily the corner
     var screen: String? // display id this instance is bound to; nil = unbound
                         // (shows on every monitor in sync mode, on the primary
                         //  monitor in separate mode)
+    var anchor: String? // which point of the widget box `x`/`y` pin down, so the
+                        // widget grows away from it instead of pushing it around;
+                        // nil = "top-left" (the historical behaviour)
+
+    /// The nine anchors, in reading order (row-major). The runtime derives the
+    /// factors from the index: column/2 horizontally, row/2 vertically.
+    static let anchors: Set<String> = [
+        "top-left", "top", "top-right",
+        "left", "center", "right",
+        "bottom-left", "bottom", "bottom-right"
+    ]
 }
 
 /// Persists placed widget instances to instances.json.
@@ -60,7 +71,8 @@ final class InstanceStore {
         }
         instances = enabled.sorted().map { widget in
             WidgetInstance(id: Self.freshId(for: widget), widget: widget,
-                           x: points[widget]?.x, y: points[widget]?.y, screen: nil)
+                           x: points[widget]?.x, y: points[widget]?.y,
+                           screen: nil, anchor: nil)
         }
     }
 
@@ -84,7 +96,7 @@ final class InstanceStore {
             py = bounds.height / 2 - 160 + offset
         }
         let inst = WidgetInstance(id: Self.freshId(for: widget), widget: widget,
-                                  x: px, y: py, screen: screen)
+                                  x: px, y: py, screen: screen, anchor: nil)
         instances.append(inst)
         persist()
         return inst
@@ -95,10 +107,25 @@ final class InstanceStore {
         persist()
     }
 
+    /// Saves a drag. `x`/`y` are measured at the instance's anchor, which is
+    /// what the runtime reports when the drag ends.
     func move(id: String, x: Double, y: Double) {
         guard let i = instances.firstIndex(where: { $0.id == id }) else { return }
         instances[i].x = x
         instances[i].y = y
+        persist()
+    }
+
+    /// Changes which point of the widget box its saved position pins down.
+    /// The runtime re-measures the point for the new anchor and sends it along,
+    /// so switching anchors never moves the widget — it only changes where it
+    /// grows from when its content resizes.
+    func setAnchor(id: String, anchor: String, x: Double?, y: Double?) {
+        guard WidgetInstance.anchors.contains(anchor),
+              let i = instances.firstIndex(where: { $0.id == id }) else { return }
+        instances[i].anchor = anchor
+        if let x { instances[i].x = x }
+        if let y { instances[i].y = y }
         persist()
     }
 
@@ -138,6 +165,7 @@ final class InstanceStore {
             if let x = inst.x { d["x"] = x }
             if let y = inst.y { d["y"] = y }
             if let s = inst.screen { d["screen"] = s }
+            if let a = inst.anchor { d["anchor"] = a }
             return d
         }
     }

@@ -38,16 +38,27 @@ la barra de menú. Para que arranque al iniciar sesión: Ajustes del Sistema →
   *preset*: haz clic en su tarjeta para colocar una instancia nueva en el escritorio, tantas
   veces como quieras (como los widgets nativos de macOS). Mientras la galería está abierta,
   los widgets del escritorio se pueden **arrastrar** (la posición se guarda al soltar) y
-  **eliminar** con la insignia ⊖ de su esquina. Al cerrar la galería, el escritorio vuelve a
-  ser *click-through* (los clics pasan a los iconos).
+  **eliminar** con la insignia ⊖ de su esquina. La insignia de 3×3 puntos de la esquina
+  opuesta elige el **ancla**: qué punto del widget fija la posición guardada. Al cerrar la
+  galería, el escritorio vuelve a ser *click-through* (los clics pasan a los iconos).
 - **Recargar widgets**
 - **Abrir carpeta de widgets**
 - **Salir**
 
 Las instancias colocadas se guardan en `~/Library/Application Support/Bruma/instances.json`
-(`[{ id, widget, x, y }]`). Los antiguos `states.json` + `positions.json` se migran
-automáticamente la primera vez: cada widget activado se convierte en una instancia con su
-posición guardada.
+(`[{ id, widget, x, y, screen, anchor }]`). Los antiguos `states.json` + `positions.json` se
+migran automáticamente la primera vez: cada widget activado se convierte en una instancia con
+su posición guardada.
+
+### Anclaje
+
+`x`/`y` no son siempre la esquina superior izquierda: son el punto del widget que indica su
+`anchor`, uno de los nueve (`top-left`, `top`, `top-right`, `left`, `center`, `right`,
+`bottom-left`, `bottom`, `bottom-right`; por defecto `top-left`). Cuando el contenido del
+widget crece o se encoge, el widget se expande *alejándose* del ancla, así que el punto
+anclado no se mueve: con `bottom-right`, un widget que crece lo hace hacia arriba y a la
+izquierda y mantiene pegada esa esquina; con `center`, crece por igual en todas direcciones.
+Cambiar el ancla con la galería abierta no mueve el widget — solo cambia desde dónde crece.
 
 ## Widgets incluidos
 
@@ -111,7 +122,9 @@ esquema interno `archw://`. Ej.: `@font-face { src: url('MiFuente.otf'); }`.
 
 **Posición:** el `top/left/right/bottom` del `className` es la posición por defecto; cada
 instancia colocada guarda la suya en `instances.json` (arrastra con la galería abierta) y
-gana sobre el CSS.
+gana sobre el CSS. Si el widget cambia de tamaño solo (más líneas de salida, una fila extra),
+elige su ancla en la galería para decidir qué borde o esquina se queda fijo (ver
+[Anclaje](#anclaje)).
 
 ## Arquitectura
 
