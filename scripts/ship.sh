@@ -34,8 +34,12 @@ say() { printf '\n\033[1;36m==> %s\033[0m\n' "$*"; }
 
 # ── Pre-flight ────────────────────────────────────────────────────────────────
 gh auth status >/dev/null 2>&1 || { echo "ERROR: run 'gh auth login' first." >&2; exit 1; }
-if git rev-parse "v$VERSION" >/dev/null 2>&1; then
-  echo "ERROR: tag v$VERSION already exists locally. Bump to a new version." >&2; exit 1
+# A pre-existing tag normally means the version was already shipped. Under RESUME=1 it
+# usually means the opposite — the interrupted run got as far as tagging — so there it
+# is expected and step 2 reuses it instead of failing.
+if git rev-parse "v$VERSION" >/dev/null 2>&1 && [ "${RESUME:-0}" != "1" ]; then
+  echo "ERROR: tag v$VERSION already exists locally. Bump to a new version," >&2
+  echo "       or use RESUME=1 to finish publishing that existing build." >&2; exit 1
 fi
 
 # ── 1. Build + package + appcast + dmg ─────────────────────────────────────────
@@ -97,9 +101,27 @@ done < <(grep -o 'download/[^"]*' "$DIST/appcast.xml" | sed 's|^download/||' | s
 say "Committing & tagging source repo"
 git add -A
 git commit -q -m "release: v$VERSION" || echo "(nothing new to commit)"
-git tag "v$VERSION"
-git push origin HEAD
-git push origin "v$VERSION"
+# Idempotent: a resumed run finds its own tag from the interrupted attempt. Never
+# move it — it already points at the commit whose binary was notarized and zipped.
+if git rev-parse "v$VERSION" >/dev/null 2>&1; then
+  echo "(tag v$VERSION already exists — keeping it)"
+else
+  git tag "v$VERSION"
+fi
+# dist/ carries the whole release history, so a push runs to megabytes and GitHub
+# sometimes answers 408 mid-upload. Raising the buffer and retrying beats failing a
+# release for a transient network hiccup; both pushes are safe to repeat.
+push_with_retry() {
+  local ref="$1"
+  for attempt in 1 2 3; do
+    if git -c http.postBuffer=524288000 push origin "$ref"; then return 0; fi
+    echo "  push of $ref failed (attempt $attempt/3), retrying in 5s…" >&2
+    sleep 5
+  done
+  echo "ERROR: could not push $ref after 3 attempts." >&2; return 1
+}
+push_with_retry HEAD
+push_with_retry "v$VERSION"
 
 # ── 3. GitHub Release on the release repo ──────────────────────────────────────
 say "Publishing GitHub Release v$VERSION on $RELEASE_REPO"
