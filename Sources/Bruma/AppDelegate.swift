@@ -104,18 +104,18 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     private func rebuildMenu() {
         let menu = NSMenu()
-        menu.addItem(withTitle: "Editar widgets…", action: #selector(togglePicker), keyEquivalent: "e").target = self
+        menu.addItem(withTitle: "Edit Widgets…", action: #selector(togglePicker), keyEquivalent: "e").target = self
         menu.addItem(.separator())
-        menu.addItem(withTitle: "Recargar widgets", action: #selector(reload), keyEquivalent: "r").target = self
-        menu.addItem(withTitle: "Abrir carpeta de widgets", action: #selector(openFolder), keyEquivalent: "").target = self
+        menu.addItem(withTitle: "Reload Widgets", action: #selector(reload), keyEquivalent: "r").target = self
+        menu.addItem(withTitle: "Open Widgets Folder", action: #selector(openFolder), keyEquivalent: "").target = self
 
         menu.addItem(.separator())
-        let update = NSMenuItem(title: "Buscar actualizaciones…",
+        let update = NSMenuItem(title: "Check for Updates…",
                                 action: #selector(SPUStandardUpdaterController.checkForUpdates(_:)),
                                 keyEquivalent: "")
         update.target = updaterController
         menu.addItem(update)
-        menu.addItem(withTitle: "Salir de bruma", action: #selector(quit), keyEquivalent: "q").target = self
+        menu.addItem(withTitle: "Quit bruma", action: #selector(quit), keyEquivalent: "q").target = self
         statusItem.menu = menu
     }
 

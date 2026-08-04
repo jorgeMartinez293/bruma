@@ -2,7 +2,7 @@ import WebKit
 
 /// Hosts one transparent WKWebView that loads the widget runtime.
 /// One WebHost exists per screen.
-final class WebHost {
+final class WebHost: NSObject, WKNavigationDelegate {
     let webView: WKWebView
 
     init(frame: NSRect, screenID: String, bridge: NativeBridge,
@@ -29,6 +29,18 @@ final class WebHost {
         webView.autoresizingMask = [.width, .height]
         if #available(macOS 13.3, *) { webView.isInspectable = true }
 
+        super.init()
+        webView.navigationDelegate = self
+
+        load()
+    }
+
+    /// A desktop webview is off-screen most of the time (it lives behind every
+    /// other window), so WebKit is free to kill its content process under memory
+    /// pressure — which leaves a blank page and no widgets. Nothing else in the
+    /// app would ever reload it, so reload here.
+    func webViewWebContentProcessDidTerminate(_ webView: WKWebView) {
+        NSLog("Bruma: web content process terminated, reloading widgets")
         load()
     }
 

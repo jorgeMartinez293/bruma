@@ -206,7 +206,7 @@
       if (!widgets.length) {
         var empty = document.createElement("div");
         empty.className = "empty";
-        empty.textContent = "No hay widgets en la carpeta. Añade carpetas <nombre>/<nombre>.jsx.";
+        empty.textContent = "No widgets in the folder. Add <name>/<name>.jsx folders.";
         cards.appendChild(empty);
         return;
       }

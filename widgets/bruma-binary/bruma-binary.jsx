@@ -1,20 +1,20 @@
-// Reloj binario (BCD) — una columna de puntos por dígito de HH:MM:SS.
-// Cada punto es un bit (8/4/2/1 de abajo a arriba); se van rellenando conforme
-// pasan los segundos. Sin fondo: los puntos van sueltos sobre el wallpaper.
+// Binary clock (BCD) — one column of dots per digit of HH:MM:SS.
+// Each dot is a bit (8/4/2/1 from bottom to top); they fill in as the
+// seconds go by. No background: the dots sit straight on the wallpaper.
 export const command = "date +'%H%M%S'";
 
 export const refreshFrequency = 1000;
 
-// Geometría — toca DOT/STEP para escalar el widget entero.
-const DOT = 12;     // radio del punto
-const STEP_X = 38;  // separación entre columnas (dígitos)
-const STEP_Y = 40;  // separación entre filas (bits)
+// Geometry — tweak DOT/STEP to scale the whole widget.
+const DOT = 12;     // dot radius
+const STEP_X = 38;  // spacing between columns (digits)
+const STEP_Y = 40;  // spacing between rows (bits)
 
 const W = DOT * 2 + STEP_X * 5;
 const H = DOT * 2 + STEP_Y * 3;
 
 const COL_X = [...Array(6)].map((_, i) => DOT + i * STEP_X);
-const ROW_Y = [...Array(4)].map((_, b) => H - DOT - b * STEP_Y); // bit 1 abajo
+const ROW_Y = [...Array(4)].map((_, b) => H - DOT - b * STEP_Y); // bit 1 at the bottom
 
 export const className = `
   top: 48px;
@@ -33,11 +33,11 @@ export const className = `
   circle { transition: fill .3s ease; }
 `;
 
-// 6 dígitos: decenas/unidades de horas, minutos y segundos.
-// bits = cuántos puntos necesita ese dígito (0-2, 0-9, 0-5, 0-9…).
+// 6 digits: tens/units of hours, minutes and seconds.
+// bits = how many dots that digit needs (0-2, 0-9, 0-5, 0-9…).
 const DIGITS = [2, 4, 3, 4, 3, 4];
 
-// Punto del bit b (0 = valor 1) de la columna col.
+// Dot for bit b (0 = value 1) of column col.
 const dot = (col, b, on) => (
   <circle
     key={`${col}-${b}`}

@@ -1,6 +1,6 @@
-// Reloj analógico — estética de widget nativo macOS.
-// El fondo es Liquid Glass real (lo pinta bruma con NSGlassEffectView detrás
-// del webview); aquí solo va el contenido, con colores que siguen el tema.
+// Analog clock — native macOS widget look.
+// The background is real Liquid Glass (bruma paints it with NSGlassEffectView
+// behind the webview); this file is just the content, with theme-aware colors.
 export const command = "date +'%H %M %S'";
 
 export const refreshFrequency = 1000;
@@ -32,7 +32,7 @@ export const className = `
   svg { display: block; }
 `;
 
-const R = 85; // centro del viewBox 170x170
+const R = 85; // center of the 170x170 viewBox
 
 const tick = (i) => {
   const a = (i * 30) * Math.PI / 180;

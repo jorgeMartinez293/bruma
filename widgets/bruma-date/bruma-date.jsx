@@ -1,5 +1,5 @@
-// Calendario — número del día en grande y 12 marcas tipo esfera para el mes.
-// Fondo: Liquid Glass nativo (glass = true); colores siguen el tema del sistema.
+// Calendar — large day number plus 12 dial-style ticks for the month.
+// Background: native Liquid Glass (glass = true); colors follow the system theme.
 export const command = 'date "+%d %m"';
 
 export const refreshFrequency = 60000; // 1 min
@@ -31,18 +31,18 @@ export const className = `
 
 const R = 85;
 
-const MESES = ["ENERO", "FEBRERO", "MARZO", "ABRIL", "MAYO", "JUNIO",
-  "JULIO", "AGOSTO", "SEPTIEMBRE", "OCTUBRE", "NOVIEMBRE", "DICIEMBRE"];
+const MONTHS = ["JANUARY", "FEBRUARY", "MARCH", "APRIL", "MAY", "JUNE",
+  "JULY", "AUGUST", "SEPTEMBER", "OCTOBER", "NOVEMBER", "DECEMBER"];
 
-// Marca i (0 = enero, arriba). Las marcas se apoyan en una superelipse
-// (círculo ligeramente hinchado hacia el cuadrado, esquinas suaves) y
-// apuntan radialmente al centro. La del mes actual: roja, más larga y gruesa.
+// Tick i (0 = January, at the top). Ticks sit on a superellipse (a circle
+// slightly puffed toward a square, with soft corners) and point radially
+// at the center. The current month's tick: red, longer and thicker.
 const monthTick = (i, current) => {
   const a = (i * 30) * Math.PI / 180;
   const on = i === current;
   const sin = Math.sin(a), cos = Math.cos(a);
 
-  // superelipse |x/S|^n + |y/S|^n = 1 → radio según el ángulo
+  // superellipse |x/S|^n + |y/S|^n = 1 → radius as a function of the angle
   const S = 66, n = 4;
   const r2 = S / Math.pow(Math.pow(Math.abs(sin), n) + Math.pow(Math.abs(cos), n), 1 / n);
   const r1 = r2 - (on ? 14 : 10);
@@ -69,7 +69,7 @@ export const render = ({ output }) => {
       {[...Array(12)].map((_, i) => monthTick(i, month - 1))}
       <text x={R} y={58} textAnchor="middle" style={{ fill: "var(--red)" }}
         fontSize="12" fontWeight="700" letterSpacing="1.5">
-        {MESES[month - 1]}
+        {MONTHS[month - 1]}
       </text>
       <text x={R} y={96} textAnchor="middle" dominantBaseline="central"
         style={{ fill: "var(--fg)" }} fontSize="58" fontWeight="700">

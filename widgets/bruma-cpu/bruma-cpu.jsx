@@ -1,10 +1,10 @@
-// Uso de CPU a lo largo del tiempo — 2x1, estética de widget nativo.
-// Fondo: Liquid Glass nativo (glass = true); colores siguen el tema.
-// Muestrea con `top` cada 2 s y dibuja los últimos ~2 minutos como
-// área + línea; el número grande es el valor actual.
+// CPU usage over time — 2x1, native widget look.
+// Background: native Liquid Glass (glass = true); theme-aware colors.
+// Samples with `top` every 2 s and draws the last ~2 minutes as
+// area + line; the large number is the current value.
 export const command = `top -l 2 -n 0 -s 1 | grep -E '^CPU usage' | tail -1`;
 
-export const refreshFrequency = 2000; // 2 s por muestra
+export const refreshFrequency = 2000; // 2 s per sample
 
 export const glass = true;
 
@@ -35,85 +35,85 @@ export const className = `
 
   color: var(--fg);
 
-  .cabecera { display: flex; align-items: baseline; gap: 8px; }
-  .titulo { font-size: 13px; font-weight: 600; color: var(--fg2); }
-  .rango { font-size: 10px; font-weight: 500; color: var(--fg3); }
-  .valor {
+  .header { display: flex; align-items: baseline; gap: 8px; }
+  .title { font-size: 13px; font-weight: 600; color: var(--fg2); }
+  .range { font-size: 10px; font-weight: 500; color: var(--fg3); }
+  .value {
     margin-left: auto;
     font-size: 24px; font-weight: 700;
     font-variant-numeric: tabular-nums;
   }
-  .valor .pct { font-size: 14px; font-weight: 600; color: var(--fg2); }
-  .grafica { display: block; margin-top: 8px; overflow: visible; }
-  .aviso {
+  .value .pct { font-size: 14px; font-weight: 600; color: var(--fg2); }
+  .chart { display: block; margin-top: 8px; overflow: visible; }
+  .notice {
     height: 100%; display: flex; align-items: center; justify-content: center;
     color: var(--fg2); font-size: 13px; font-weight: 500;
   }
 `;
 
-// Historial de muestras (persiste entre ticks: el módulo se evalúa una vez).
-const historial = [];
-const MAX_MUESTRAS = 60; // 60 × 2 s ≈ 2 min
+// Sample history (persists across ticks: the module is evaluated once).
+const history = [];
+const MAX_SAMPLES = 60; // 60 × 2 s ≈ 2 min
 
-// Geometría interna: 356 − 2·20 de padding = 316 de ancho útil.
-const ANCHO = 316;
-const ALTO = 88;
-const MARGEN_IZQ = 26; // hueco para las etiquetas 100/50/0
+// Internal geometry: 356 − 2·20 of padding = 316 of usable width.
+const WIDTH = 316;
+const HEIGHT = 88;
+const LEFT_MARGIN = 26; // room for the 100/50/0 labels
 
-const parseaUso = (raw) => {
+const parseUsage = (raw) => {
   const m = /([\d.]+)%\s*idle/.exec(raw || "");
   if (!m) return null;
   return Math.min(100, Math.max(0, 100 - parseFloat(m[1])));
 };
 
-const construyeCaminos = (datos) => {
-  const x0 = MARGEN_IZQ;
-  const anchoPlot = ANCHO - x0;
-  const paso = datos.length > 1 ? anchoPlot / (MAX_MUESTRAS - 1) : 0;
-  // Ancla la serie al borde derecho: lo más reciente siempre a la derecha.
-  const xDe = (i) => x0 + anchoPlot - (datos.length - 1 - i) * paso;
-  const yDe = (v) => ALTO - (v / 100) * ALTO;
-  const pts = datos.map((v, i) => [xDe(i), yDe(v)]);
-  const linea = pts.map(([x, y], i) => (i ? "L" : "M") + x.toFixed(1) + " " + y.toFixed(1)).join(" ");
-  const area = linea +
-    " L" + pts[pts.length - 1][0].toFixed(1) + " " + ALTO +
-    " L" + pts[0][0].toFixed(1) + " " + ALTO + " Z";
-  return { linea, area, ultimo: pts[pts.length - 1] };
+const buildPaths = (data) => {
+  const x0 = LEFT_MARGIN;
+  const plotWidth = WIDTH - x0;
+  const step = data.length > 1 ? plotWidth / (MAX_SAMPLES - 1) : 0;
+  // Anchor the series to the right edge: the newest sample is always rightmost.
+  const xOf = (i) => x0 + plotWidth - (data.length - 1 - i) * step;
+  const yOf = (v) => HEIGHT - (v / 100) * HEIGHT;
+  const pts = data.map((v, i) => [xOf(i), yOf(v)]);
+  const linePath = pts.map(([x, y], i) => (i ? "L" : "M") + x.toFixed(1) + " " + y.toFixed(1)).join(" ");
+  const areaPath = linePath +
+    " L" + pts[pts.length - 1][0].toFixed(1) + " " + HEIGHT +
+    " L" + pts[0][0].toFixed(1) + " " + HEIGHT + " Z";
+  return { linePath, areaPath, last: pts[pts.length - 1] };
 };
 
 export const render = ({ output }) => {
-  const uso = parseaUso(output);
-  if (uso !== null) {
-    historial.push(uso);
-    if (historial.length > MAX_MUESTRAS) historial.shift();
+  const usage = parseUsage(output);
+  if (usage !== null) {
+    history.push(usage);
+    if (history.length > MAX_SAMPLES) history.shift();
   }
 
-  if (historial.length < 2)
-    return <div className="aviso">Midiendo CPU…</div>;
+  if (history.length < 2)
+    return <div className="notice">Measuring CPU…</div>;
 
-  const actual = historial[historial.length - 1];
-  const { linea, area, ultimo } = construyeCaminos(historial);
-  const rejilla = [
+  const current = history[history.length - 1];
+  const { linePath, areaPath, last } = buildPaths(history);
+  const gridLines = [
     { v: 100, y: 0 },
-    { v: 50, y: ALTO / 2 },
-    { v: 0, y: ALTO },
+    { v: 50, y: HEIGHT / 2 },
+    { v: 0, y: HEIGHT },
   ];
 
   return (
     <div>
-      <div className="cabecera">
-        <span className="titulo">Procesador</span>
-        <span className="rango">últimos 2 min</span>
-        <span className="valor">
-          {Math.round(actual)}
+      <div className="header">
+        <span className="title">Processor</span>
+        <span className="range">last 2 min</span>
+        <span className="value">
+          {Math.round(current)}
           <span className="pct">%</span>
         </span>
       </div>
       <svg
-        className="grafica"
-        width={ANCHO}
-        height={ALTO}
-        viewBox={`0 0 ${ANCHO} ${ALTO}`}
+        className="chart"
+        width={WIDTH}
+        height={HEIGHT}
+        viewBox={`0 0 ${WIDTH} ${HEIGHT}`}
       >
         <defs>
           <linearGradient id="cpuArea" x1="0" y1="0" x2="0" y2="1">
@@ -121,29 +121,29 @@ export const render = ({ output }) => {
             <stop offset="100%" style={{ stopColor: "var(--blue)" }} stopOpacity="0.04" />
           </linearGradient>
         </defs>
-        {rejilla.map(({ v, y }) => (
+        {gridLines.map(({ v, y }) => (
           <g key={v}>
             <line
-              x1={MARGEN_IZQ} x2={ANCHO} y1={y} y2={y}
+              x1={LEFT_MARGIN} x2={WIDTH} y1={y} y2={y}
               style={{ stroke: "var(--grid)" }} strokeWidth="1"
               strokeDasharray={v === 0 ? "" : "3 4"}
             />
             <text
-              x={MARGEN_IZQ - 6} y={y + 3} textAnchor="end"
+              x={LEFT_MARGIN - 6} y={y + 3} textAnchor="end"
               fontSize="9" fontWeight="500" style={{ fill: "var(--fg3)" }}
             >
               {v}
             </text>
           </g>
         ))}
-        <path d={area} fill="url(#cpuArea)" />
+        <path d={areaPath} fill="url(#cpuArea)" />
         <path
-          d={linea}
+          d={linePath}
           fill="none" style={{ stroke: "var(--fg)" }} strokeWidth="2"
           strokeLinejoin="round" strokeLinecap="round"
         />
         <circle
-          cx={ultimo[0]} cy={ultimo[1]} r="3.5"
+          cx={last[0]} cy={last[1]} r="3.5"
           style={{ fill: "var(--blue)", stroke: "var(--fg)" }} strokeWidth="1.5"
         />
       </svg>

@@ -134,24 +134,24 @@
 <body>
   <header>
     <h1>Widgets</h1>
-    <span class="hint">Arrastra un widget al escritorio para colocarlo · o haz clic para añadirlo</span>
+    <span class="hint">Drag a widget onto the desktop to place it · or click to add it</span>
     <div class="toggles">
-      <label class="toggle" id="snap" title="Activado: al arrastrar, los widgets se ajustan a una cuadrícula. Desactivado: colocación libre.">
-        <span class="toggle-label">Ajustar a cuadrícula</span>
+      <label class="toggle" id="snap" title="On: widgets snap to a grid while dragging. Off: free placement.">
+        <span class="toggle-label">Snap to grid</span>
         <span class="switch">
           <input type="checkbox" id="snapInput">
           <span class="track"></span>
         </span>
       </label>
-      <label class="toggle" id="sync" title="Activado: todos los monitores muestran los mismos widgets. Desactivado: cada monitor tiene su propio conjunto.">
-        <span class="toggle-label">Sincronizar monitores</span>
+      <label class="toggle" id="sync" title="On: every monitor shows the same widgets. Off: each monitor keeps its own set.">
+        <span class="toggle-label">Sync monitors</span>
         <span class="switch">
           <input type="checkbox" id="syncInput">
           <span class="track"></span>
         </span>
       </label>
     </div>
-    <div class="close" id="close" title="Cerrar">✕</div>
+    <div class="close" id="close" title="Close">✕</div>
   </header>
   <div id="cards"></div>
   <script src="picker.js"></script>
