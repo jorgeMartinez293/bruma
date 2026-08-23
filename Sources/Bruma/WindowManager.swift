@@ -28,6 +28,13 @@ final class WindowManager: BackdropDelegate {
         NotificationCenter.default.addObserver(
             self, selector: #selector(screenParametersChanged),
             name: NSApplication.didChangeScreenParametersNotification, object: nil)
+        // Backdrops are a cached blurred crop of the wallpaper, not a live
+        // WindowServer sample (that flashes opaque mid-swipe when a window
+        // spans two Spaces at once — see GlassBackdrops.swift). Re-derive the
+        // cache once the switch lands; nothing needs to track it continuously.
+        NSWorkspace.shared.notificationCenter.addObserver(
+            self, selector: #selector(refreshWallpaper),
+            name: NSWorkspace.activeSpaceDidChangeNotification, object: nil)
     }
 
     private static func currentLayout() -> [ScreenLayout] {
@@ -51,6 +58,7 @@ final class WindowManager: BackdropDelegate {
             for (window, screen) in zip(windows, NSScreen.screens) {
                 window.setFrame(screen.frame, display: true)
             }
+            refreshWallpaper() // screen frame may have changed size
             return
         }
         rebuild()
@@ -79,10 +87,10 @@ final class WindowManager: BackdropDelegate {
             let host = WebHost(frame: window.contentLayoutRect, screenID: screen.displayID,
                                bridge: bridge, schemeHandler: schemeHandler)
 
-            // Native glass sits behind the transparent webview: the web layer
-            // draws only widget content; the material comes from AppKit.
+            // Blurred-wallpaper backdrop sits behind the transparent webview:
+            // the web layer draws only widget content.
             let content = FlippedContentView(frame: window.contentLayoutRect)
-            let backdrop = BackdropContainer(frame: content.bounds)
+            let backdrop = BackdropContainer(frame: content.bounds, wallpaper: WallpaperSnapshot(screen: screen))
             backdrop.autoresizingMask = [.width, .height]
             host.webView.frame = content.bounds
             content.addSubview(backdrop)
@@ -106,6 +114,10 @@ final class WindowManager: BackdropDelegate {
               let index = hosts.firstIndex(where: { $0.webView === webView }),
               index < backdrops.count else { return }
         backdrops[index].update(frames: frames)
+    }
+
+    @objc private func refreshWallpaper() {
+        for backdrop in backdrops { backdrop.refreshWallpaper() }
     }
 
     func reloadWidgets() {

@@ -34,6 +34,7 @@ final class SettingsStore {
     private struct Payload: Codable {
         var syncMonitors: Bool?
         var snapToGrid: Bool?
+        var launchAtLoginPromptShown: Bool?
     }
 
     /// Default is `true`: monitors mirror each other, matching how Bruma behaved
@@ -44,12 +45,16 @@ final class SettingsStore {
     /// grid-snap toggle existed.
     private(set) var snapToGrid: Bool = false
 
+    /// Whether the one-time "launch at login?" prompt has already been shown.
+    private(set) var launchAtLoginPromptShown: Bool = false
+
     init(file: URL) {
         self.file = file
         if let data = try? Data(contentsOf: file),
            let decoded = try? JSONDecoder().decode(Payload.self, from: data) {
             syncMonitors = decoded.syncMonitors ?? syncMonitors
             snapToGrid = decoded.snapToGrid ?? snapToGrid
+            launchAtLoginPromptShown = decoded.launchAtLoginPromptShown ?? launchAtLoginPromptShown
         }
     }
 
@@ -65,10 +70,17 @@ final class SettingsStore {
         persist()
     }
 
+    func markLaunchAtLoginPromptShown() {
+        guard !launchAtLoginPromptShown else { return }
+        launchAtLoginPromptShown = true
+        persist()
+    }
+
     private func persist() {
         let encoder = JSONEncoder()
         encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
-        let payload = Payload(syncMonitors: syncMonitors, snapToGrid: snapToGrid)
+        let payload = Payload(syncMonitors: syncMonitors, snapToGrid: snapToGrid,
+                              launchAtLoginPromptShown: launchAtLoginPromptShown)
         guard let data = try? encoder.encode(payload) else { return }
         try? data.write(to: file, options: .atomic)
     }

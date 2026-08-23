@@ -8,31 +8,49 @@ struct BackdropFrame {
     let cornerRadius: CGFloat
 }
 
-/// One widget's backdrop: the glass material plus the specular rim native
-/// widgets have — a hairline glint brightest at the top-left corner with a
-/// dimmer reflection at the bottom-right, fading out at the other two corners.
+/// One widget's backdrop: a blurred crop of the desktop wallpaper (see
+/// `WallpaperSnapshot`) plus the specular rim native widgets have — a
+/// hairline glint brightest at the top-left corner with a dimmer reflection
+/// at the bottom-right, fading out at the other two corners.
 final class WidgetBackdropView: NSView {
-    private let material: NSView
+    private let imageLayer = CALayer()
+    private let tintLayer = CALayer()
     private let rim: SpecularRimView
+    private weak var wallpaper: WallpaperSnapshot?
+    private var globalRect: NSRect = .zero
 
     var cornerRadius: CGFloat {
         didSet {
-            Self.applyCornerRadius(cornerRadius, to: material)
+            imageLayer.cornerRadius = cornerRadius
+            tintLayer.cornerRadius = cornerRadius
             rim.cornerRadius = cornerRadius
         }
     }
 
     init(frame: NSRect, cornerRadius: CGFloat) {
         self.cornerRadius = cornerRadius
-        material = Self.makeMaterialView(frame: NSRect(origin: .zero, size: frame.size),
-                                         cornerRadius: cornerRadius)
         rim = SpecularRimView(frame: NSRect(origin: .zero, size: frame.size))
         rim.cornerRadius = cornerRadius
         super.init(frame: frame)
 
-        material.autoresizingMask = [.width, .height]
+        wantsLayer = true
+        imageLayer.frame = bounds
+        imageLayer.cornerCurve = .continuous
+        imageLayer.cornerRadius = cornerRadius
+        imageLayer.masksToBounds = true
+        imageLayer.contentsGravity = .resizeAspectFill
+        imageLayer.backgroundColor = NSColor.windowBackgroundColor.withAlphaComponent(0.4).cgColor
+        layer?.addSublayer(imageLayer)
+
+        // Native glass/vibrancy materials darken in dark mode and add a
+        // faint wash in light mode; a raw wallpaper crop has neither, so it
+        // reads too bright next to real system chrome. Reapply it by hand.
+        tintLayer.frame = bounds
+        tintLayer.cornerCurve = .continuous
+        tintLayer.cornerRadius = cornerRadius
+        layer?.addSublayer(tintLayer)
+
         rim.autoresizingMask = [.width, .height]
-        addSubview(material)
         addSubview(rim)
 
         // Soft ambient shadow like native desktop widgets.
@@ -41,35 +59,46 @@ final class WidgetBackdropView: NSView {
         shadow.shadowBlurRadius = 14
         shadow.shadowOffset = NSSize(width: 0, height: -6)
         self.shadow = shadow
+
+        updateTint()
     }
 
     required init?(coder: NSCoder) { fatalError("unused") }
 
-    // MARK: material construction
-
-    private static func makeMaterialView(frame: NSRect, cornerRadius: CGFloat) -> NSView {
-        if #available(macOS 26.0, *) {
-            let glass = NSGlassEffectView(frame: frame)
-            glass.cornerRadius = cornerRadius
-            return glass
-        }
-        let effect = NSVisualEffectView(frame: frame)
-        effect.blendingMode = .behindWindow
-        effect.material = .popover
-        effect.state = .active
-        effect.wantsLayer = true
-        effect.layer?.cornerCurve = .continuous
-        effect.layer?.cornerRadius = cornerRadius
-        effect.layer?.masksToBounds = true
-        return effect
+    override func layout() {
+        super.layout()
+        CATransaction.begin()
+        CATransaction.setDisableActions(true)
+        imageLayer.frame = bounds
+        tintLayer.frame = bounds
+        CATransaction.commit()
     }
 
-    private static func applyCornerRadius(_ radius: CGFloat, to view: NSView) {
-        if #available(macOS 26.0, *), let glass = view as? NSGlassEffectView {
-            glass.cornerRadius = radius
-        } else {
-            view.layer?.cornerRadius = radius
-        }
+    override func viewDidChangeEffectiveAppearance() {
+        super.viewDidChangeEffectiveAppearance()
+        updateTint()
+    }
+
+    private func updateTint() {
+        let isDark = effectiveAppearance.bestMatch(from: [.aqua, .darkAqua]) == .darkAqua
+        tintLayer.backgroundColor = isDark
+            ? NSColor.black.withAlphaComponent(0.38).cgColor
+            : NSColor.white.withAlphaComponent(0.12).cgColor
+    }
+
+    /// Positions this backdrop against `wallpaper` and crops/blurs the tile
+    /// under `globalRect` (screen coordinates, from `NSWindow.convertToScreen`).
+    func configure(wallpaper: WallpaperSnapshot, globalRect: NSRect) {
+        self.wallpaper = wallpaper
+        self.globalRect = globalRect
+        refreshImage()
+    }
+
+    /// Re-derives the tile from the wallpaper snapshot's current bitmap —
+    /// called after `wallpaper.reload()` picks up a changed desktop picture.
+    func refreshImage() {
+        guard let wallpaper else { return }
+        imageLayer.contents = wallpaper.blurredTile(for: globalRect)
     }
 }
 
@@ -114,36 +143,55 @@ private final class SpecularRimView: NSView {
     }
 }
 
-/// Container that sits *behind* the webview and hosts one native backdrop
-/// per widget. On macOS 26+ the material is real Liquid Glass
-/// (NSGlassEffectView); earlier systems fall back to NSVisualEffectView,
-/// which still samples the wallpaper behind the window. Either way the
-/// material tracks the system appearance (light/dark) automatically — that
-/// is the whole point: the webview cannot blur what lies behind a
-/// transparent window, only native views can.
+/// Container that sits *behind* the webview and hosts one backdrop per
+/// widget, each a blurred crop of `wallpaper` (see `WallpaperSnapshot`) —
+/// the webview cannot blur what lies behind a transparent window, so this is
+/// the layer that fakes native glass.
 final class BackdropContainer: NSView {
+    private let wallpaper: WallpaperSnapshot
     private var views: [String: WidgetBackdropView] = [:]
 
     override var isFlipped: Bool { true } // match CSS top-left coordinates
+
+    init(frame: NSRect, wallpaper: WallpaperSnapshot) {
+        self.wallpaper = wallpaper
+        super.init(frame: frame)
+    }
+
+    required init?(coder: NSCoder) { fatalError("unused") }
 
     func update(frames: [BackdropFrame]) {
         var seen = Set<String>()
         for frame in frames {
             seen.insert(frame.id)
+            let view: WidgetBackdropView
             if let existing = views[frame.id] {
                 existing.frame = frame.rect
                 existing.cornerRadius = frame.cornerRadius
+                view = existing
             } else {
-                let view = WidgetBackdropView(frame: frame.rect,
-                                              cornerRadius: frame.cornerRadius)
+                view = WidgetBackdropView(frame: frame.rect, cornerRadius: frame.cornerRadius)
                 views[frame.id] = view
                 addSubview(view)
             }
+            view.configure(wallpaper: wallpaper, globalRect: globalRect(for: frame.rect))
         }
         for (id, view) in views where !seen.contains(id) {
             view.removeFromSuperview()
             views.removeValue(forKey: id)
         }
+    }
+
+    /// Re-derives every backdrop's tile after `wallpaper.reload()` — call on
+    /// Spaces switches / screen changes, not continuously.
+    func refreshWallpaper() {
+        wallpaper.reload()
+        for view in views.values { view.refreshImage() }
+    }
+
+    private func globalRect(for localRect: NSRect) -> NSRect {
+        guard let window else { return localRect }
+        return window.convertToScreen(convert(localRect, to: nil))
     }
 
     func clear() { update(frames: []) }

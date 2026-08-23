@@ -71,6 +71,25 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         watcher.start()
 
         setupStatusItem()
+        promptLaunchAtLoginIfNeeded()
+    }
+
+    // MARK: Launch at login
+
+    /// First-run only: ask whether bruma should open automatically at login.
+    private func promptLaunchAtLoginIfNeeded() {
+        guard !settings.launchAtLoginPromptShown else { return }
+        settings.markLaunchAtLoginPromptShown()
+
+        let alert = NSAlert()
+        alert.messageText = "Open bruma at login?"
+        alert.informativeText = "bruma can start automatically every time you log in to this Mac."
+        alert.addButton(withTitle: "Open at Login")
+        alert.addButton(withTitle: "Not Now")
+        NSApp.activate(ignoringOtherApps: true)
+        let response = alert.runModal()
+        LaunchAtLogin.setEnabled(response == .alertFirstButtonReturn)
+        rebuildMenu()
     }
 
     // MARK: First-run seed
@@ -108,6 +127,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         menu.addItem(.separator())
         menu.addItem(withTitle: "Reload Widgets", action: #selector(reload), keyEquivalent: "r").target = self
         menu.addItem(withTitle: "Open Widgets Folder", action: #selector(openFolder), keyEquivalent: "").target = self
+
+        menu.addItem(.separator())
+        let loginItem = NSMenuItem(title: "Open bruma at Login",
+                                   action: #selector(toggleLaunchAtLogin), keyEquivalent: "")
+        loginItem.target = self
+        loginItem.state = LaunchAtLogin.isEnabled ? .on : .off
+        menu.addItem(loginItem)
 
         menu.addItem(.separator())
         let update = NSMenuItem(title: "Check for Updates…",
@@ -167,6 +193,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     @objc private func openFolder() {
         NSWorkspace.shared.open(Paths.widgetsDir)
+    }
+
+    @objc private func toggleLaunchAtLogin() {
+        LaunchAtLogin.setEnabled(!LaunchAtLogin.isEnabled)
+        rebuildMenu()
     }
 
     @objc private func quit() {
