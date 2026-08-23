@@ -13,9 +13,9 @@
 	<key>CFBundlePackageType</key>
 	<string>APPL</string>
 	<key>CFBundleShortVersionString</key>
-	<string>1.7</string>
+	<string>1.8</string>
 	<key>CFBundleVersion</key>
-	<string>10</string>
+	<string>11</string>
 	<key>LSMinimumSystemVersion</key>
 	<string>13.0</string>
 	<key>LSUIElement</key>
@@ -27,6 +27,6 @@
 	<key>SUFeedURL</key>
 	<string>https://jorgeMartinez293.github.io/bruma-releases/appcast.xml</string>
 	<key>SUPublicEDKey</key>
-	<string>Yp02/4XBYtWxLPlKoaUJamHb3FfE21Rh5a9w894TK0k=</string>
+	<string>D6HP6cHyAIGdVl0KspJbyy6+KtTqfG8F3Rs6/pkRTnY=</string>
 </dict>
 </plist>

@@ -3,6 +3,21 @@
     <channel>
         <title>bruma</title>
         <item>
+            <title>1.8</title>
+            <pubDate>Mon, 24 Aug 2026 00:02:27 +0200</pubDate>
+            <sparkle:version>11</sparkle:version>
+            <sparkle:shortVersionString>1.8</sparkle:shortVersionString>
+            <sparkle:minimumSystemVersion>13.0</sparkle:minimumSystemVersion>
+            <enclosure url="https://github.com/jorgeMartinez293/bruma-releases/releases/latest/download/bruma-1.8.zip" length="2382551" type="application/octet-stream" sparkle:edSignature="vFFuOMebryoEbWx+HoiAmlVhh9auAOCNdvwgdWaulmTd8nItzZ0PYh3CT8LHj/ZDUaBnLkXegIs+YBA4+E2hBA=="/>
+            <sparkle:deltas>
+                <enclosure url="https://github.com/jorgeMartinez293/bruma-releases/releases/latest/download/bruma11-10.delta" sparkle:deltaFrom="10" length="11450" type="application/octet-stream" sparkle:deltaFromSparkleExecutableSize="977808" sparkle:deltaFromSparkleLocales="de,he,ar,el,ja,fa,uk" sparkle:edSignature="wYIDmBb3WbeqvGzmPxgUGnXbs5GAF6uhH6y0obIberOdXaiVw+SZVu1ykjKoQByjuTX9Gnuv+rXMi1QnZeJkAw=="/>
+                <enclosure url="https://github.com/jorgeMartinez293/bruma-releases/releases/latest/download/bruma11-9.delta" sparkle:deltaFrom="9" length="96350" type="application/octet-stream" sparkle:deltaFromSparkleExecutableSize="977808" sparkle:deltaFromSparkleLocales="de,he,ar,el,ja,fa,uk" sparkle:edSignature="WBV2zttp20t1kZqSAsoKnq4jf0JIbkIMrsvkfu8ApzQn0H4v+z51/j5/1yKifGMtOXNb10QWLHId3PWhVrksDA=="/>
+                <enclosure url="https://github.com/jorgeMartinez293/bruma-releases/releases/latest/download/bruma11-8.delta" sparkle:deltaFrom="8" length="110214" type="application/octet-stream" sparkle:deltaFromSparkleExecutableSize="977808" sparkle:deltaFromSparkleLocales="de,he,ar,el,ja,fa,uk" sparkle:edSignature="vKHx3RmM9Y3itPFwRIoVi8nIA1KUklsJrwFZOcVFoa/ZiDyJJ0wP9/JgPwmfOruwYDjLZ58NVCXngGcEo19XDw=="/>
+                <enclosure url="https://github.com/jorgeMartinez293/bruma-releases/releases/latest/download/bruma11-6.delta" sparkle:deltaFrom="6" length="124950" type="application/octet-stream" sparkle:deltaFromSparkleExecutableSize="977808" sparkle:deltaFromSparkleLocales="de,he,ar,el,ja,fa,uk" sparkle:edSignature="dRV41WoSdkIA12CXpbKfhN/5KIWBoxgPjpqAM1TQgqvtoaak1IQEngf/X3IPaI1+2An/7jnIPgvaesDbpLL2Ag=="/>
+                <enclosure url="https://github.com/jorgeMartinez293/bruma-releases/releases/latest/download/bruma11-5.delta" sparkle:deltaFrom="5" length="155434" type="application/octet-stream" sparkle:deltaFromSparkleExecutableSize="977808" sparkle:deltaFromSparkleLocales="de,he,ar,el,ja,fa,uk" sparkle:edSignature="9dkuwQ5BX2BN0mD7FN80MtvzQmJINksSuDvDv9xkg0geu/FT+qVCrrlW2nfCGr/yCfLjlVJ/d3n2ks+o/Q8kAg=="/>
+            </sparkle:deltas>
+        </item>
+        <item>
             <title>1.7</title>
             <pubDate>Sun, 23 Aug 2026 23:53:23 +0200</pubDate>
             <sparkle:version>10</sparkle:version>
@@ -30,21 +45,6 @@
                 <enclosure url="https://github.com/jorgeMartinez293/bruma-releases/releases/latest/download/bruma9-5.delta" sparkle:deltaFrom="5" length="134666" type="application/octet-stream" sparkle:deltaFromSparkleExecutableSize="977808" sparkle:deltaFromSparkleLocales="de,he,ar,el,ja,fa,uk" sparkle:edSignature="rb/xrzm3AjIBMjmDcJG2Q5RkGvUj/ZHUw2Pd8/BeVW40voC8Be90WOCRnuyzl3Mh8xRFrlsJirZazJPbfGFLAw=="/>
                 <enclosure url="https://github.com/jorgeMartinez293/bruma-releases/releases/latest/download/bruma9-4.delta" sparkle:deltaFrom="4" length="165334" type="application/octet-stream" sparkle:deltaFromSparkleExecutableSize="977808" sparkle:deltaFromSparkleLocales="de,he,ar,el,ja,fa,uk" sparkle:edSignature="2/FXV0xUtj2+Kh6z7UIsTPU/fleDxFcE3mDouMn0Apa8rKdOco9SWOW2ZoYxfao+a8T+nrJgnETK/wQ4Sw4hBw=="/>
                 <enclosure url="https://github.com/jorgeMartinez293/bruma-releases/releases/latest/download/bruma9-3.delta" sparkle:deltaFrom="3" length="177558" type="application/octet-stream" sparkle:deltaFromSparkleExecutableSize="977808" sparkle:deltaFromSparkleLocales="de,he,ar,el,ja,fa,uk" sparkle:edSignature="jSttyrk559pFBgXhg1dk6atqE9FOJc04tKDBeZavbGghXgb5mopnGEmUTEdkJTH586jxq5QWZv7aWggW1DLPBA=="/>
-            </sparkle:deltas>
-        </item>
-        <item>
-            <title>1.5</title>
-            <pubDate>Mon, 03 Aug 2026 13:41:01 +0200</pubDate>
-            <sparkle:version>8</sparkle:version>
-            <sparkle:shortVersionString>1.5</sparkle:shortVersionString>
-            <sparkle:minimumSystemVersion>13.0</sparkle:minimumSystemVersion>
-            <enclosure url="https://github.com/jorgeMartinez293/bruma-releases/releases/latest/download/bruma-1.5.zip" length="2357511" type="application/octet-stream"/>
-            <sparkle:deltas>
-                <enclosure url="https://github.com/jorgeMartinez293/bruma-releases/releases/latest/download/bruma8-6.delta" sparkle:deltaFrom="6" length="60214" type="application/octet-stream" sparkle:deltaFromSparkleExecutableSize="977808" sparkle:deltaFromSparkleLocales="de,he,ar,el,ja,fa,uk" sparkle:edSignature="/qrOeu0b6XyOgLs+y8XcFvYrDawOrSr+LXLKn7sNWoIY4eFOdlGzCcvgg2Y90+PYYbYqoMBWlzyjwVW/nqx5Bg=="/>
-                <enclosure url="https://github.com/jorgeMartinez293/bruma-releases/releases/latest/download/bruma8-5.delta" sparkle:deltaFrom="5" length="121486" type="application/octet-stream" sparkle:deltaFromSparkleExecutableSize="977808" sparkle:deltaFromSparkleLocales="de,he,ar,el,ja,fa,uk" sparkle:edSignature="2+N9DTV02Ya3ibsW0Z4taiXCyjPt9ALpw5Bgmpbxp0o6kzWEry5Vq5PEwMGjLmJs8JpJSJkMjkRHBs9NDEkJDg=="/>
-                <enclosure url="https://github.com/jorgeMartinez293/bruma-releases/releases/latest/download/bruma8-4.delta" sparkle:deltaFrom="4" length="156754" type="application/octet-stream" sparkle:deltaFromSparkleExecutableSize="977808" sparkle:deltaFromSparkleLocales="de,he,ar,el,ja,fa,uk" sparkle:edSignature="OI0uQ7ftGN2ugXekX9prJUjALY1FW/80ovU0wGT2n8W7NqczBYmmoGs08An57BhEyrhcZ3dU4uwb8KxpTaE2CQ=="/>
-                <enclosure url="https://github.com/jorgeMartinez293/bruma-releases/releases/latest/download/bruma8-3.delta" sparkle:deltaFrom="3" length="170682" type="application/octet-stream" sparkle:deltaFromSparkleExecutableSize="977808" sparkle:deltaFromSparkleLocales="de,he,ar,el,ja,fa,uk" sparkle:edSignature="RQMOA/U83mO22dw98qEelRveaJdm6KwBz4hzH97GjvAkpSqh82/dJeUMa10ttfiilkyZ5Nq+hSN96V1M8FJoBg=="/>
-                <enclosure url="https://github.com/jorgeMartinez293/bruma-releases/releases/latest/download/bruma8-2.delta" sparkle:deltaFrom="2" length="171010" type="application/octet-stream" sparkle:deltaFromSparkleExecutableSize="977808" sparkle:deltaFromSparkleLocales="de,he,ar,el,ja,fa,uk" sparkle:edSignature="FCBR+vwtg01NBiEkqFLLKCqR3D+9fg37IJEMkmk2J9U7262XJOmNst0uR30IQMLwhrdIm2mCyW7tQ7Tybmm7BQ=="/>
             </sparkle:deltas>
         </item>
     </channel>
