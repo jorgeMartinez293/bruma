@@ -13,15 +13,23 @@
 	<key>CFBundlePackageType</key>
 	<string>APPL</string>
 	<key>CFBundleShortVersionString</key>
-	<string>1.8</string>
+	<string>1.9</string>
 	<key>CFBundleVersion</key>
-	<string>11</string>
+	<string>12</string>
 	<key>LSMinimumSystemVersion</key>
 	<string>13.0</string>
 	<key>LSUIElement</key>
 	<true/>
+	<key>NSCalendarsFullAccessUsageDescription</key>
+	<string>bruma shows your upcoming events in the Calendar widget.</string>
+	<key>NSCalendarsUsageDescription</key>
+	<string>bruma shows your upcoming events in the Calendar widget.</string>
 	<key>NSHumanReadableCopyright</key>
 	<string>bruma — vaho family</string>
+	<key>NSRemindersFullAccessUsageDescription</key>
+	<string>bruma shows your open reminders in the Reminders widget.</string>
+	<key>NSRemindersUsageDescription</key>
+	<string>bruma shows your open reminders in the Reminders widget.</string>
 	<key>SUEnableAutomaticChecks</key>
 	<true/>
 	<key>SUFeedURL</key>

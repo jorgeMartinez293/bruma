@@ -31,7 +31,15 @@
     styled: {}
   };
 
+  var brumaModule = {
+    calendarEvents: function (opts) {
+      return call("calendarEvents", { days: (opts && opts.days) || 2 });
+    },
+    reminders: function () { return call("reminders"); }
+  };
+
   function fakeRequire(name) {
+    if (name === "bruma") return brumaModule;
     if (name === "react") return Object.assign({ default: window.React }, window.React);
     if (name === "react-dom") return Object.assign({ default: window.ReactDOM }, window.ReactDOM);
     if (name === "uebersicht" || name === "Uebersicht") return uebersichtModule;
@@ -141,7 +149,13 @@
     }
 
     // One shot — a static preview is enough for the gallery.
-    if (typeof widget.command === "string" && widget.command.trim()) {
+    if (typeof widget.command === "function") {
+      Promise.resolve().then(widget.command).then(function (out) {
+        draw(out, "");
+      }, function (e) {
+        draw("", String(e));
+      });
+    } else if (typeof widget.command === "string" && widget.command.trim()) {
       call("shell", { id: preset.id, command: widget.command }).then(function (r) {
         draw((r && r.output) || "", (r && r.error) || "");
       });
@@ -215,14 +229,6 @@
   }
 
   // ---- header toggles -------------------------------------------------------
-
-  var syncInput = document.getElementById("syncInput");
-  call("getSyncMonitors").then(function (on) {
-    syncInput.checked = on !== false; // default on
-  });
-  syncInput.addEventListener("change", function () {
-    notify("setSyncMonitors", { value: syncInput.checked });
-  });
 
   var snapInput = document.getElementById("snapInput");
   call("getSnapToGrid").then(function (on) {

@@ -7,8 +7,7 @@ struct WidgetInstance: Codable, Equatable {
     var x: Double?      // CSS px, top-left origin; nil = widget's own CSS position
     var y: Double?      // point measured at `anchor`, not necessarily the corner
     var screen: String? // display id this instance is bound to; nil = unbound
-                        // (shows on every monitor in sync mode, on the primary
-                        //  monitor in separate mode)
+                        // (shows on the primary monitor)
     var anchor: String? // which point of the widget box `x`/`y` pin down, so the
                         // widget grows away from it instead of pushing it around;
                         // nil = "top-left" (the historical behaviour)
@@ -49,6 +48,7 @@ final class InstanceStore {
             migrate(widgetStore: widgetStore, states: legacyStates, positions: legacyPositions)
             persist()
         }
+        resolveScreenBindings()
     }
 
     // MARK: Legacy migration
@@ -76,13 +76,37 @@ final class InstanceStore {
         }
     }
 
+    /// Rewrites bindings written before displays were identified by UUID (they hold the
+    /// CoreGraphics display number) into the UUID of the display that number means right
+    /// now. Only displays connected at this moment can be translated; a binding we can't
+    /// resolve is left exactly as it is — the monitor it names may well come back, and
+    /// until it does `asArray` shows the instance on the primary rather than hiding it.
+    ///
+    /// Run again on every display change, not just at launch: a legacy binding to a monitor
+    /// that wasn't plugged in when bruma started can only be recognised once it arrives.
+    /// Returns true when something changed, so the caller can remount the desktop.
+    @discardableResult
+    func resolveScreenBindings() -> Bool {
+        let byLegacy = Dictionary(NSScreen.screens.map { ($0.legacyDisplayID, $0.displayID) },
+                                  uniquingKeysWith: { first, _ in first })
+        var changed = false
+        for i in instances.indices {
+            guard let bound = instances[i].screen,
+                  let uuid = byLegacy[bound], uuid != bound else { continue }
+            instances[i].screen = uuid
+            changed = true
+        }
+        if changed { persist() }
+        return changed
+    }
+
     // MARK: Mutations
 
     /// Places a new instance of `widget`. With explicit `x`/`y` (a drag-drop from
     /// the picker), it lands exactly there; otherwise it cascades from the centre
     /// of the main screen so consecutive click-placements don't stack exactly on
-    /// top of each other. `screen` binds the instance to one monitor (separate
-    /// mode); pass nil in sync mode so it shows on every monitor.
+    /// top of each other. `screen` binds the instance to one monitor; nil
+    /// leaves it unbound (shown on the primary monitor).
     @discardableResult
     func add(widget: String, screen: String? = nil,
              x: Double? = nil, y: Double? = nil) -> WidgetInstance {
@@ -146,19 +170,24 @@ final class InstanceStore {
     ///
     /// - `screen`: the requesting host's display id (nil for the picker, which
     ///   wants the whole list).
-    /// - `syncMonitors`: when true every monitor shows every instance. When
-    ///   false a host shows only instances bound to its own screen; instances
-    ///   with no binding fall to the primary display so nothing vanishes.
-    func asArray(forScreen screen: String? = nil, syncMonitors: Bool = true) -> [[String: Any]] {
+    ///
+    /// A host shows only instances bound to its own screen; instances with no
+    /// binding fall to the primary display — and so does an instance bound to a
+    /// display that isn't attached right now (its monitor was unplugged, or the
+    /// binding predates the UUID switch and no migration could resolve it).
+    /// Losing a monitor must never look like losing the widget, and the binding is
+    /// left untouched, so the instance goes home when its display comes back.
+    func asArray(forScreen screen: String? = nil) -> [[String: Any]] {
         let visible: [WidgetInstance]
-        if syncMonitors || screen == nil {
-            visible = instances
-        } else {
+        if let screen {
             let primary = NSScreen.primaryID
+            let connected = NSScreen.connectedIDs
             visible = instances.filter { inst in
-                if let s = inst.screen { return s == screen }
-                return screen == primary
+                guard let s = inst.screen, connected.contains(s) else { return screen == primary }
+                return s == screen
             }
+        } else {
+            visible = instances
         }
         return visible.map { inst in
             var d: [String: Any] = ["id": inst.id, "widget": inst.widget]

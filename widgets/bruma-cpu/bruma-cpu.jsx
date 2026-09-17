@@ -11,7 +11,7 @@ export const glass = true;
 export const className = `
   top: 234px;
   left: 20px;
-  width: 356px;
+  width: 366px;
   height: 170px;
   box-sizing: border-box;
   padding: 18px 20px;
@@ -55,8 +55,8 @@ export const className = `
 const history = [];
 const MAX_SAMPLES = 60; // 60 × 2 s ≈ 2 min
 
-// Internal geometry: 356 − 2·20 of padding = 316 of usable width.
-const WIDTH = 316;
+// Internal geometry: 366 − 2·20 of padding = 326 of usable width.
+const WIDTH = 326;
 const HEIGHT = 88;
 const LEFT_MARGIN = 26; // room for the 100/50/0 labels
 

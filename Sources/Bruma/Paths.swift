@@ -24,8 +24,7 @@ enum Paths {
     /// read once to migrate from the old singleton model.
     static let instancesFile = supportDir.appendingPathComponent("instances.json")
 
-    /// App preferences: { syncMonitors }. Whether all monitors mirror the same
-    /// widgets or each monitor keeps its own set.
+    /// App preferences: { snapToGrid, launchAtLoginPromptShown }.
     static let settingsFile = supportDir.appendingPathComponent("settings.json")
 
     /// Legacy drag positions: { widgetId: { x, y } }. Migration source only.

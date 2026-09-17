@@ -10,7 +10,7 @@ export const glass = true;
 export const className = `
   top: 424px;
   left: 20px;
-  width: 356px;
+  width: 366px;
   height: 170px;
   box-sizing: border-box;
   padding: 18px 20px;
@@ -33,10 +33,9 @@ export const className = `
   }
 
   color: var(--fg);
-  overflow: hidden;
 
   /* Title and meta stack on the left so the header never has to fit
-     three long items on one 316px line. */
+     three long items on one 326px line. */
   .header { display: flex; align-items: center; gap: 10px; height: 27px; }
   .titles { min-width: 0; }
   .title {
@@ -61,13 +60,13 @@ export const className = `
   }
 `;
 
-// Geometry: 356 − 2·20 of padding = 316 of usable width,
+// Geometry: 366 − 2·20 of padding = 326 of usable width,
 // 170 − 2·18 = 134 of usable height (27 header + 10 gap + 95 grid = 132).
 const SIDE = 11;  // square side
 const GAP = 3;    // spacing between squares
 const STEP = SIDE + GAP;
 const LEFT_MARGIN = 22; // room for the M/W/F initials
-const WEEKS = Math.floor((316 - LEFT_MARGIN + GAP) / STEP);
+const WEEKS = Math.floor((326 - LEFT_MARGIN + GAP) / STEP);
 const WIDTH = LEFT_MARGIN + WEEKS * STEP - GAP;
 const HEIGHT = 7 * STEP - GAP;
 

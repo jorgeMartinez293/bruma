@@ -2,10 +2,15 @@
 
 APP_NAME = bruma
 EXECUTABLE = Bruma
-# Universal (arm64 + x86_64) products land here instead of .build/release.
-BUILD_DIR = .build/apple/Products/Release
+BUILD_FLAGS = -c release --arch arm64 --arch x86_64
+# Ask SwiftPM where the universal (arm64 + x86_64) products land instead of
+# hard-coding it: the path depends on the toolchain's build system
+# (.build/apple/Products/Release with the legacy one, .build/out/Products/Release
+# with Swift Build in Swift 6.2+). Recursive `=` so it only runs when used.
+BUILD_DIR = $(shell swift build $(BUILD_FLAGS) --show-bin-path)
 APP_BUNDLE = $(APP_NAME).app
 PLIST = Info.plist
+ENTITLEMENTS = Bruma.entitlements
 ICON = icon.icns
 
 # Signing identity, in order of preference:
@@ -25,9 +30,10 @@ ifeq ($(strip $(SIGN_IDENTITY)),)
 SIGN_IDENTITY := -
 endif
 
-# Hardened runtime + secure timestamp: both hard requirements for notarization. bruma needs
-# no entitlements alongside them — it does no dlopen of foreign dylibs, no AppleScript and
-# no JIT, which are the things hardened runtime would otherwise block.
+# Hardened runtime + secure timestamp: both hard requirements for notarization. Hardened
+# runtime blocks EventKit unless the app carries the calendars entitlement (it covers
+# Reminders too), so the app itself is signed with $(ENTITLEMENTS); nested Sparkle code
+# is not.
 # Skipped for ad-hoc: --timestamp round-trips to Apple and simply fails offline.
 ifeq ($(SIGN_IDENTITY),-)
 CODESIGN_FLAGS =
@@ -39,7 +45,7 @@ all: build package
 release: build package
 
 build:
-	swift build -c release --arch arm64 --arch x86_64
+	swift build $(BUILD_FLAGS)
 
 package:
 	@echo "Packaging $(APP_BUNDLE)..."
@@ -71,7 +77,7 @@ package:
 	  codesign --force $(CODESIGN_FLAGS) --sign "$(SIGN_IDENTITY)" "$$x"; \
 	done; \
 	codesign --force $(CODESIGN_FLAGS) --sign "$(SIGN_IDENTITY)" "$$SPK"
-	codesign --force $(CODESIGN_FLAGS) --sign "$(SIGN_IDENTITY)" $(APP_BUNDLE)
+	codesign --force $(CODESIGN_FLAGS) --entitlements $(ENTITLEMENTS) --sign "$(SIGN_IDENTITY)" $(APP_BUNDLE)
 	codesign --verify --deep --strict $(APP_BUNDLE)
 	@echo "Signed with: $(SIGN_IDENTITY)"
 

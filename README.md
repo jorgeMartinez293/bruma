@@ -62,9 +62,20 @@ Cambiar el ancla con la galería abierta no mueve el widget — solo cambia desd
 
 ## Widgets incluidos
 
-En [`widgets/`](widgets/) hay widgets listos para usar (reloj analógico, mes, CPU),
-con instrucciones de instalación: basta copiar la carpeta del widget a
-`~/Library/Application Support/Bruma/widgets/`.
+En [`widgets/`](widgets/) hay widgets listos para usar, con instrucciones de
+instalación: basta copiar la carpeta del widget a
+`~/Library/Application Support/Bruma/widgets/`. Hay dos familias:
+
+- **Estilo macOS** (`bruma-*`): panel de Liquid Glass, tipografía del sistema.
+  Cubren los widgets de escritorio que trae macOS — reloj (analógico y digital),
+  husos horarios, fecha, calendario (próximos eventos y mes), tiempo (actual y
+  previsión), batería del Mac y de los periféricos, recordatorios, notas, correo,
+  música, bolsa, noticias, tiempo de uso, fotos y consejos —
+  más los extras de bruma: CPU, uso de Claude Code y reloj binario.
+- **Estilo Nothing OS** (`nothing-*`): 18 widgets planos en blanco y negro con
+  tipografía de matriz de puntos y un único acento rojo — reloj, dial, fecha,
+  calendario, husos horarios, cuenta atrás, CPU, RAM, disco, batería, red,
+  uptime, Glyph Interface, tiempo, sol, luna, reproducción y un teletipo.
 
 ## Crear un widget
 
@@ -117,6 +128,20 @@ el wallpaper y cambia solo con el modo claro/oscuro — un `backdrop-filter` en 
 porque el webview es transparente y no hay nada web detrás que difuminar. Para que el
 *contenido* siga el tema, usa `@media (prefers-color-scheme: dark)` en el `className`.
 
+**Datos nativos (extensión bruma):** `command` también puede ser una función que devuelve
+(una promesa de) lo que recibe `render` como `output`. El módulo `bruma` expone fuentes
+nativas vía EventKit, sin abrir Calendar.app ni Reminders.app:
+
+```jsx
+import { calendarEvents, reminders } from "bruma";
+export const command = () => calendarEvents({ days: 2 });
+// output = { status, events: [{ title, start, end, allDay, calendar }] }
+// reminders() → { status, items: [{ title, due?, list, priority }] }
+```
+
+`status` es `"authorized"`, `"denied"` (acceso rechazado en Ajustes del Sistema) o
+`"unavailable"` (sin `Info.plist`, p. ej. con `swift run`). Las fechas van en milisegundos.
+
 **Assets relativos** (fuentes, imágenes) se resuelven contra la carpeta del widget vía el
 esquema interno `archw://`. Ej.: `@font-face { src: url('MiFuente.otf'); }`.
 
@@ -140,7 +165,7 @@ elige su ancla en la galería para decidir qué borde o esquina se queda fijo (v
 
 ## Límites del MVP
 
-- API soportado: `command` (string), `refreshFrequency`, `className` (string/array), `render`.
+- API soportado: `command` (string, o función que devuelve una promesa), `refreshFrequency`, `className` (string/array), `render`.
 - `command` como función con `dispatch`, `initialState`/`updateState` y el helper `css` de
   emotion aún no están implementados (no los necesita el widget de reloj de prueba).
 

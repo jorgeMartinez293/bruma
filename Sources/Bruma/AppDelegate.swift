@@ -34,7 +34,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         windowManager = WindowManager(bridge: bridge, schemeHandler: schemeHandler)
 
         bridge.onInstancesChanged = { [weak self] in self?.windowManager.reloadWidgets() }
-        bridge.onSyncMonitorsChanged = { [weak self] in self?.windowManager.reloadWidgets() }
         bridge.onSnapToGridChanged = { [weak self] on in self?.windowManager.setSnapToGrid(on) }
         bridge.onClosePicker = { [weak self] in self?.closePicker() }
         bridge.editModeProvider = { [weak self] in self?.windowManager.editMode ?? false }
@@ -43,14 +42,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
 
         // Drag a card off the shelf → place the new instance exactly where it's
-        // dropped. Bind to the drop screen in separate mode; leave unbound (shows
-        // everywhere) in sync mode, matching click-placement.
+        // dropped, bound to the monitor it was dropped on.
         dragController.pickerFrameProvider = { [weak self] in self?.picker?.frame ?? .zero }
         dragController.onEnd = { [weak self] in self?.picker?.resetDrag() }
         dragController.onDrop = { [weak self] widget, x, y, screen in
             guard let self else { return }
-            let bind = self.settings.syncMonitors ? nil : screen
-            self.instances.add(widget: widget, screen: bind, x: x, y: y)
+            self.instances.add(widget: widget, screen: screen, x: x, y: y)
             self.windowManager.reloadWidgets()
         }
 
@@ -69,6 +66,19 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             }
         }
         watcher.start()
+
+        // A monitor arriving is the only moment a binding written as a CoreGraphics display
+        // number — pre-UUID, or restored from an older theme — can be recognised as that
+        // monitor's: at launch it named nothing. Re-resolve on every display change and
+        // remount if anything found its way home. WindowManager rebuilds on the same
+        // notification; this reload is what makes sure the fresh hosts see the new bindings
+        // whichever of the two observers happens to run first.
+        NotificationCenter.default.addObserver(
+            forName: NSApplication.didChangeScreenParametersNotification, object: nil, queue: .main
+        ) { [weak self] _ in
+            guard let self, self.instances.resolveScreenBindings() else { return }
+            self.windowManager.reloadWidgets()
+        }
 
         setupStatusItem()
         promptLaunchAtLoginIfNeeded()

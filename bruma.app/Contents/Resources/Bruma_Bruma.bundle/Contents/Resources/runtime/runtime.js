@@ -116,7 +116,18 @@
     styled: {}
   };
 
+  // Bruma extension: native data sources for widgets, via
+  // `import { calendarEvents, reminders } from "bruma"`. Each returns a Promise
+  // of the bridge reply ({ status, events | items }).
+  var brumaModule = {
+    calendarEvents: function (opts) {
+      return call("calendarEvents", { days: (opts && opts.days) || 2 });
+    },
+    reminders: function () { return call("reminders"); }
+  };
+
   function fakeRequire(name) {
+    if (name === "bruma") return brumaModule;
     if (name === "react") return Object.assign({ default: window.React }, window.React);
     if (name === "react-dom") return Object.assign({ default: window.ReactDOM }, window.ReactDOM);
     if (name === "uebersicht" || name === "Uebersicht") return uebersichtModule;
@@ -383,7 +394,15 @@
 
     function tick() {
       var cmd = widget.command;
-      if (typeof cmd === "string" && cmd.trim()) {
+      if (typeof cmd === "function") {
+        // Bruma extension: a function command returns (a Promise of) the
+        // output handed to render — e.g. data from the `bruma` module.
+        Promise.resolve().then(cmd).then(function (out) {
+          draw(out, "");
+        }, function (e) {
+          draw("", String(e));
+        });
+      } else if (typeof cmd === "string" && cmd.trim()) {
         // Shell cwd resolves from the *preset* id (the widget's folder).
         call("shell", { id: preset.id, command: cmd }).then(function (r) {
           draw((r && r.output) || "", (r && r.error) || "");

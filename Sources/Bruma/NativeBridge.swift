@@ -7,15 +7,15 @@ import WebKit
 ///     { action: "listInstances", screen? }      -> [{ id, widget, x?, y?, screen?, anchor? }]
 ///     { action: "addInstance", widget }         -> { id, widget, x, y }
 ///     { action: "shell", id, command }          -> { output, error }  (id = preset id)
-///     { action: "getSyncMonitors" }             -> Bool
 ///     { action: "getSnapToGrid" }               -> Bool
+///     { action: "calendarEvents", days? }       -> { status, events? }  (EventKit)
+///     { action: "reminders" }                   -> { status, items? }   (EventKit)
 ///
 /// Notify channel "archNotify"  — fire-and-forget:
 ///     { action: "moveInstance", id, x, y }
 ///     { action: "setInstanceAnchor", id, anchor, x?, y? }
 ///     { action: "removeInstance", id }
 ///     { action: "beginCardDrag", widget, rect: {x,y,w,h}, grabX, grabY }
-///     { action: "setSyncMonitors", value }
 ///     { action: "setSnapToGrid", value }
 ///     { action: "closePicker" }
 ///     { action: "backdrops", frames: [{ id, x, y, w, h, r }] }
@@ -29,6 +29,7 @@ final class NativeBridge: NSObject, WKScriptMessageHandler, WKScriptMessageHandl
     private let instances: InstanceStore
     private let settings: SettingsStore
     private let shell = ShellRunner()
+    private let eventKit = EventKitSource()
     weak var backdropDelegate: BackdropDelegate?
 
     /// Fired after the instance set changes from the JS side (add/remove), so
@@ -36,9 +37,6 @@ final class NativeBridge: NSObject, WKScriptMessageHandler, WKScriptMessageHandl
     var onInstancesChanged: (() -> Void)?
     /// Fired when the picker page asks to be dismissed (✕ button / Escape).
     var onClosePicker: (() -> Void)?
-    /// Fired when the monitor sync mode is toggled from the picker, so the app
-    /// can re-filter every desktop webview.
-    var onSyncMonitorsChanged: (() -> Void)?
     /// Fired when grid-snap is toggled from the picker, so the app can push the
     /// new value to every live desktop runtime.
     var onSnapToGridChanged: ((Bool) -> Void)?
@@ -53,7 +51,7 @@ final class NativeBridge: NSObject, WKScriptMessageHandler, WKScriptMessageHandl
     var editModeProvider: (() -> Bool)?
 
     /// The display id the picker is currently shown on. New instances placed
-    /// from the picker bind to this screen while in separate (non-sync) mode.
+    /// from the picker bind to this screen.
     var pickerScreenID: String?
 
     init(store: WidgetStore, instances: InstanceStore, settings: SettingsStore) {
@@ -79,14 +77,10 @@ final class NativeBridge: NSObject, WKScriptMessageHandler, WKScriptMessageHandl
             // The desktop host injects its own display id; the picker omits it
             // and gets the full list.
             let screen = body["screen"] as? String
-            replyHandler(instances.asArray(forScreen: screen,
-                                           syncMonitors: settings.syncMonitors), nil)
+            replyHandler(instances.asArray(forScreen: screen), nil)
 
         case "getEditMode":
             replyHandler(editModeProvider?() ?? false, nil)
-
-        case "getSyncMonitors":
-            replyHandler(settings.syncMonitors, nil)
 
         case "getSnapToGrid":
             replyHandler(settings.snapToGrid, nil)
@@ -95,13 +89,22 @@ final class NativeBridge: NSObject, WKScriptMessageHandler, WKScriptMessageHandl
             guard let widget = body["widget"] as? String else {
                 replyHandler(nil, "addInstance: missing widget"); return
             }
-            // In separate mode, bind the new instance to the monitor the picker
-            // is on; in sync mode leave it unbound so it mirrors everywhere.
-            let target = settings.syncMonitors ? nil : pickerScreenID
-            let inst = instances.add(widget: widget, screen: target)
+            // Bind the new instance to the monitor the picker is on.
+            let inst = instances.add(widget: widget, screen: pickerScreenID)
             replyHandler(["id": inst.id, "widget": inst.widget,
                           "x": inst.x ?? 0, "y": inst.y ?? 0], nil)
             onInstancesChanged?()
+
+        case "calendarEvents":
+            let days = (body["days"] as? NSNumber)?.doubleValue ?? 2
+            eventKit.calendarEvents(days: days) { result in
+                DispatchQueue.main.async { replyHandler(result, nil) }
+            }
+
+        case "reminders":
+            eventKit.incompleteReminders { result in
+                DispatchQueue.main.async { replyHandler(result, nil) }
+            }
 
         case "shell":
             guard let id = body["id"] as? String,
@@ -143,11 +146,6 @@ final class NativeBridge: NSObject, WKScriptMessageHandler, WKScriptMessageHandl
             if let id = body["id"] as? String {
                 instances.remove(id: id)
                 onInstancesChanged?()
-            }
-        case "setSyncMonitors":
-            if let value = body["value"] as? Bool {
-                settings.setSyncMonitors(value)
-                onSyncMonitorsChanged?()
             }
         case "setSnapToGrid":
             if let value = body["value"] as? Bool {

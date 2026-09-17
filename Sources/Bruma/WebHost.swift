@@ -15,7 +15,7 @@ final class WebHost: NSObject, WKNavigationDelegate {
         ucc.add(bridge, name: "archNotify")
 
         // Tell the runtime which monitor it renders, so listInstances can be
-        // filtered per-screen in separate mode.
+        // filtered per-screen.
         let bootstrap = WKUserScript(
             source: "window.__brumaScreen = \"\(screenID)\";",
             injectionTime: .atDocumentStart, forMainFrameOnly: true)
