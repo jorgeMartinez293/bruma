@@ -128,6 +128,11 @@ el wallpaper y cambia solo con el modo claro/oscuro — un `backdrop-filter` en 
 porque el webview es transparente y no hay nada web detrás que difuminar. Para que el
 *contenido* siga el tema, usa `@media (prefers-color-scheme: dark)` en el `className`.
 
+**Clicks y scroll (extensión bruma):** las ventanas del escritorio dejan pasar el ratón. Un
+widget que necesite clicks o scroll exporta `export const interactive = true`: mientras el
+cursor está sobre él, su ventana recibe el ratón (y se coloca sobre los iconos del Finder);
+fuera de él, todo sigue siendo click-through.
+
 **Datos nativos (extensión bruma):** `command` también puede ser una función que devuelve
 (una promesa de) lo que recibe `render` como `output`. El módulo `bruma` expone fuentes
 nativas vía EventKit, sin abrir Calendar.app ni Reminders.app:

@@ -27,6 +27,7 @@ final class DesktopWindow: NSWindow {
         collectionBehavior = [.canJoinAllSpaces, .stationary, .ignoresCycle, .fullScreenNone]
 
         ignoresMouseEvents = true
+        acceptsMouseMovedEvents = true // lets the local monitor see the cursor leave an interactive widget
 
         setFrame(screen.frame, display: true)
     }
@@ -35,8 +36,34 @@ final class DesktopWindow: NSWindow {
     /// (drag / remove instances) and floats just above the Finder desktop-icons
     /// layer so it — not Finder — receives them. Still below normal windows.
     func setInteractive(_ on: Bool) {
-        ignoresMouseEvents = !on
-        level = on
+        editInteractive = on
+        applyInteraction()
+    }
+
+    /// Boxes (top-left origin, webview points) of the widgets that opted in to
+    /// mouse input with `export const interactive = true`.
+    var interactiveRects: [CGRect] = [] {
+        didSet { updatePointer(at: NSEvent.mouseLocation) }
+    }
+
+    private var editInteractive = false
+    private var pointerOverWidget = false
+
+    /// Outside edit mode the window stays click-through, except while the cursor
+    /// is over an interactive widget: then it takes mouse input (clicks, scroll)
+    /// and sits above the desktop-icons layer so Finder does not swallow it.
+    func updatePointer(at screenPoint: NSPoint) {
+        let local = CGPoint(x: screenPoint.x - frame.minX, y: frame.maxY - screenPoint.y)
+        let over = interactiveRects.contains { $0.contains(local) }
+        guard over != pointerOverWidget else { return }
+        pointerOverWidget = over
+        applyInteraction()
+    }
+
+    private func applyInteraction() {
+        let live = editInteractive || pointerOverWidget
+        ignoresMouseEvents = !live
+        level = live
             ? NSWindow.Level(rawValue: Int(CGWindowLevelForKey(.desktopIconWindow)) + 1)
             : NSWindow.Level(rawValue: Int(CGWindowLevelForKey(.desktopWindow)))
     }

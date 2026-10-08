@@ -155,7 +155,11 @@
       render: pick(exp.render, def.render),
       // Bruma extension: `export const glass = true` (or a number to override
       // the corner radius) asks the native side for a Liquid Glass backdrop.
-      glass: pick(exp.glass, def.glass)
+      glass: pick(exp.glass, def.glass),
+      // Bruma extension: `export const interactive = true` lets the widget
+      // receive clicks and scrolling while the cursor is over it (the desktop
+      // is click-through otherwise).
+      interactive: pick(exp.interactive, def.interactive)
     };
   }
   function pick(a, b) { return a !== undefined ? a : b; }
@@ -217,7 +221,12 @@
     backdropRAF = requestAnimationFrame(function () {
       backdropRAF = null;
       var frames = [];
+      var hot = [];
       instances.forEach(function (inst) {
+        if (inst.interactive) {
+          var r = inst.wrap.getBoundingClientRect();
+          if (r.width && r.height) hot.push({ x: r.left, y: r.top, w: r.width, h: r.height });
+        }
         if (!inst.glass) return;
         var rect = inst.wrap.getBoundingClientRect();
         if (!rect.width || !rect.height) return;
@@ -228,6 +237,7 @@
                       w: rect.width, h: rect.height, r: radius });
       });
       notify("backdrops", { frames: frames });
+      notify("interactiveRects", { rects: hot });
     });
   }
 
@@ -339,11 +349,13 @@
     var wrap = document.createElement("div");
     wrap.className = "widget";
     wrap.id = safeId(data.id);
+    if (widget.interactive) wrap.classList.add("interactive");
 
     var styleEl = buildStyle(data.id, preset.id, widget.className);
     document.head.appendChild(styleEl);
 
     var inst = { id: data.id, widgetId: preset.id, glass: widget.glass,
+                 interactive: !!widget.interactive,
                  interval: null, reactRoot: null, styleEl: styleEl, wrap: wrap,
                  x: data.x, y: data.y, anchor: data.anchor || ANCHORS[0],
                  dragging: false };

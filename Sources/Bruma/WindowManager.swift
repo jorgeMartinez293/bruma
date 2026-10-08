@@ -19,12 +19,14 @@ final class WindowManager: BackdropDelegate {
         let scale: CGFloat
     }
     private var layout: [ScreenLayout] = []
+    private var mouseMonitors: [Any] = []
 
     init(bridge: NativeBridge, schemeHandler: WidgetSchemeHandler) {
         self.bridge = bridge
         self.schemeHandler = schemeHandler
         rebuild()
         bridge.backdropDelegate = self
+        installMouseMonitors()
         NotificationCenter.default.addObserver(
             self, selector: #selector(screenParametersChanged),
             name: NSApplication.didChangeScreenParametersNotification, object: nil)
@@ -35,6 +37,46 @@ final class WindowManager: BackdropDelegate {
         NSWorkspace.shared.notificationCenter.addObserver(
             self, selector: #selector(refreshWallpaper),
             name: NSWorkspace.activeSpaceDidChangeNotification, object: nil)
+        // macOS posts nothing when another process sets the desktop picture, so a
+        // vaho theme switch would leave the backdrops showing the previous
+        // wallpaper until the next Space switch. vaho announces every theme apply.
+        DistributedNotificationCenter.default().addObserver(
+            self, selector: #selector(themeApplied),
+            name: Notification.Name("com.jorge.vaho.themeApplied"), object: nil,
+            suspensionBehavior: .deliverImmediately)
+    }
+
+    /// Refreshes now and once more shortly after: the new desktop picture URL
+    /// can take a moment to become visible to other processes. `reload()` is a
+    /// no-op when the URL hasn't changed, so the second pass is cheap.
+    @objc private func themeApplied() {
+        refreshWallpaper()
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1) { [weak self] in
+            self?.refreshWallpaper()
+        }
+    }
+
+    /// Widgets that export `interactive` need clicks and scroll, but the windows
+    /// are click-through. Track the cursor and let the window under it listen
+    /// only while it is over such a widget. Global monitors see moves destined
+    /// for other apps (while the window ignores the mouse); local ones see them
+    /// once it is listening, which is how it learns the cursor left.
+    private func installMouseMonitors() {
+        let moves: NSEvent.EventTypeMask = [.mouseMoved, .leftMouseDragged]
+        if let m = NSEvent.addGlobalMonitorForEvents(matching: moves, handler: { [weak self] _ in
+            self?.pointerMoved()
+        }) { mouseMonitors.append(m) }
+        if let m = NSEvent.addLocalMonitorForEvents(matching: moves, handler: { [weak self] e in
+            self?.pointerMoved()
+            return e
+        }) { mouseMonitors.append(m) }
+    }
+
+    private func pointerMoved() {
+        let p = NSEvent.mouseLocation
+        for w in windows where !w.interactiveRects.isEmpty || w.level.rawValue > Int(CGWindowLevelForKey(.desktopWindow)) {
+            w.updatePointer(at: p)
+        }
     }
 
     private static func currentLayout() -> [ScreenLayout] {
@@ -114,6 +156,13 @@ final class WindowManager: BackdropDelegate {
               let index = hosts.firstIndex(where: { $0.webView === webView }),
               index < backdrops.count else { return }
         backdrops[index].update(frames: frames)
+    }
+
+    func updateInteractiveRects(for webView: WKWebView?, rects: [CGRect]) {
+        guard let webView,
+              let index = hosts.firstIndex(where: { $0.webView === webView }),
+              index < windows.count else { return }
+        windows[index].interactiveRects = rects
     }
 
     @objc private func refreshWallpaper() {

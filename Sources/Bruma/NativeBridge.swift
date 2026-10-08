@@ -19,9 +19,11 @@ import WebKit
 ///     { action: "setSnapToGrid", value }
 ///     { action: "closePicker" }
 ///     { action: "backdrops", frames: [{ id, x, y, w, h, r }] }
+///     { action: "interactiveRects", rects: [{ x, y, w, h }] }
 ///     { action: "log", message }
 protocol BackdropDelegate: AnyObject {
     func updateBackdrops(for webView: WKWebView?, frames: [BackdropFrame])
+    func updateInteractiveRects(for webView: WKWebView?, rects: [CGRect])
 }
 
 final class NativeBridge: NSObject, WKScriptMessageHandler, WKScriptMessageHandlerWithReply {
@@ -178,6 +180,16 @@ final class NativeBridge: NSObject, WKScriptMessageHandler, WKScriptMessageHandl
                                      cornerRadius: r)
             }
             backdropDelegate?.updateBackdrops(for: message.webView, frames: frames)
+
+        case "interactiveRects":
+            let rects = ((body["rects"] as? [[String: Any]]) ?? []).compactMap { r -> CGRect? in
+                guard let x = (r["x"] as? NSNumber)?.doubleValue,
+                      let y = (r["y"] as? NSNumber)?.doubleValue,
+                      let w = (r["w"] as? NSNumber)?.doubleValue,
+                      let h = (r["h"] as? NSNumber)?.doubleValue else { return nil }
+                return CGRect(x: x, y: y, width: w, height: h)
+            }
+            backdropDelegate?.updateInteractiveRects(for: message.webView, rects: rects)
 
         case "log":
             if let msg = body["message"] { NSLog("[widget] \(msg)") }

@@ -1,7 +1,8 @@
 // Claude Code usage — 2x1, same box as bruma-cpu.
 // /usage-style grid: one square per day, one column per week.
-// Source: ~/.claude/stats-cache.json (kept up to date by Claude Code itself).
-export const command = `cat "$HOME/.claude/stats-cache.json" 2>/dev/null || echo '{}'`;
+// Source: ~/.claude/history.jsonl, one line per submitted prompt, which
+// Claude Code itself appends to — there is no separate daily-stats cache.
+export const command = `jq -s 'group_by((.timestamp/1000)|localtime|strftime("%Y-%m-%d")) | map({date: (.[0].timestamp/1000|localtime|strftime("%Y-%m-%d")), messageCount: length}) | {dailyActivity: .}' "$HOME/.claude/history.jsonl" 2>/dev/null || echo '{}'`;
 
 export const refreshFrequency = 300000; // 5 min
 
